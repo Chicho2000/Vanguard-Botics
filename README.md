@@ -93,8 +93,8 @@ Chumi/
 1. **Clonar el repositorio**
 
    ```bash
-   git clone https://github.com/tu-usuario/chumi.git
-   cd chumi
+   git clone https://github.com/Chicho2000/Vanguard-Botics.git
+   cd Vanguard-Botics
    ```
 
 2. **Instalar dependencias**
