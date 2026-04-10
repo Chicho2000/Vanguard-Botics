@@ -1,0 +1,50 @@
+Header HTTP: Authorization (ej: Setcookie)
+
+Seguridad cookies: Solo usados via HTTP (para que no los lea una perosna cualquiera), CORS (Cross Origin Request Service) (Navegador promete que el header origin siempre lo va a decidir el navegador y va a representar la pagina donde se hace) + cabeceras de Cors (se configura dominios de donde se puede aceptar requests).
+
+Hay que definir nuestros endpoints (consultas, que guarde cosas , que actualize datos, que haga consultas, etc.) Ej: cuando queremos guardar algo en un sv POST. Ej: Cuando voy a actualziar un registro completo PUT. Ej: cuando voy a pedir info del server uso GET. Ej: Borrar recurso DELETE. Ej: Cuando vas a modificar una **parte** de un registro PATCH.
+
+-Armar un juego de endpoints para usuarios. (ABM: Altas, Bajas y Modificaciones) Ej: /usuarios/-> Crear o Actualizar o Borrar y Consult
+
+Json Web Token: Domain.Body.Signature (es un codigo que se genera con una clave secreta que solo sabe el servidor, y se usa para verificar que el token no fue modificado). 
+
+Hmac SHA 256: Body + Clave Secreta -> Firma.
+
+React: Hooks: Son funciones que te permiten usar el estado y otras características de React en componentes funcionales. Ej: useState (permite tener variables de estado), useEffect (permite ejecutar efectos secundarios(ej: cuando la pagina se cierra que se use "esto")), useContext (permite acceder al contexto), etc.
+
+
+funcion de login: 
+
+definimos metodo (POST). despues verificar que los que nos pasaron en el body de email, sea un mail. si est mal decimos que es invalido, sino lo normalizamos para verificar (como una inyexion sql). verifica la contraseña del mail (como que tenga minimo 6 caracteres). 
+Async, verificamso que no tenga errores, si no esta vacio -> tenemos error (error de validacion y devolvemos una respuesta al front porque sino el fron t no sabe que paso "status:400" y un mensaje de error y le pasamos los errores (aunqueen oess tan segurop porque le estamos diciendo que es lo que esta mal).
+
+const {mail,password} = req.body
+const user = await prisma.usuario.findunique where: { email.tolowercase}
+si primsa no devuelve usuario ponemos usuario no encontrado y devolvemos error 401
+success: false 
+message: credemciales incorrectas (para que no verifiquen que mails estan verificados asi cree que como mucho tambien no tiene bien puesto la credencial y no necesariamente descubtrir soi tiene o no cuenta)
+
+const valido: await bcrypt.compare(pass,, user-password )
+
+nunca vbas a guardar las contraseñas con texto plano porquer cualqueira con acceso a la db va a poder ver tu pass. se usa lo de arriba por eso (encriptada)
+
+const: token = jwt.sign le cargamos el usuario, numero de usuario, mail y nombre, y aparte el rol.
+para firmarlo: process.env.JWT_SECRET || "secreto temporal para desarrollo" (expiration: "7d").
+
+res.json({success: true, token}) y tambine un objeto de usuario (sin la contraseña)
+
+- todo se comenzo con un metodo try, si llegana haber un error va a ir a lo siguiente:
+
+catch (error) {console.log(error) return res.status(500).json({success: false, message: "error interno del servidor"})}
+
+-- funcion de login -- 
+
+funcion de logout:
+
+habria que borrar el token que le dimnos al usuario (en el front) y en el back 
+
+router.get para tener una ruta para verificar el token (para ver si e usuario sigue loggeado, si el token sigue siendo valido, etc.). aca hago una request GET al back y me dice si sigue loggeado o no. middleware (se le importa una libreria) que verifica que el token sea valido (es una funcion que se ejecuta antes de que se ejecute la funcion que queremos ejecutar). devolvemos token valido o no valido
+
+middleware: es una funcion que generalmente toma 3 parametros (req, res, next). se toma los headers authorization y devolvemos 401 si no esta el token. si esta el token, verificamos que sea valido y si es valido llamamos a la funcion que queremos ejecutar (next). 
+
+
