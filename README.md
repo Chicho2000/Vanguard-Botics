@@ -8,55 +8,23 @@ Sistema de gestión inteligente para estacionamiento automatizado. Permite admin
 
 ### Funcionalidades principales
 
-- **Gestión de usuarios**: Registro y autenticación de usuarios con sus datos personales.
+- **Gestión de usuarios**: Registro y autenticación de usuarios con sus datos personales y sistema de roles (`ADMIN`, `CLIENTE`, `INVITADO`).
 - **Registro de vehículos**: Alta de vehículos con patente, marca, modelo, color y dimensiones (alto, ancho, peso). Un vehículo puede pertenecer a un usuario registrado o ingresar sin cuenta.
-- **Pisos y espacios**: Configuración de la cochera por pisos, cada uno con límites de altura, peso y ancho. Los espacios individuales tienen coordenadas (fila/columna) para renderizar un mapa visual (grid), tipo de espacio (normal, discapacitados, carga EV, moto) y estado de ocupación.
-- **Sesiones de estacionamiento**: Registro de entrada y salida de vehículos, cálculo de minutos y monto cobrado, con estados (activa, completada, cancelada).
-- **Sistema de abonos**: Suscripciones por horas, diarias, mensuales o anuales para usuarios registrados, con control de vigencia y horas restantes.
-- **Pagos**: Módulo de pagos integrado con soporte para Mercado Pago, efectivo y transferencia, vinculado tanto a sesiones como a abonos.
-
-# Modelo de Base de Datos
-
-La base de datos está modelada con **Prisma ORM** sobre **PostgreSQL** y cuenta con las siguientes entidades:
-
-| Tabla              | Descripción                                                               |
-| ------------------ | ------------------------------------------------------------------------- |
-| `users`            | Usuarios registrados (email, password, nombre, teléfono)                  |
-| `vehicles`         | Vehículos con patente, dimensiones y usuario opcional asociado            |
-| `floors`           | Pisos de la cochera con límites físicos                                   |
-| `parking_spots`    | Espacios individuales con coordenadas, tipo y estado                      |
-| `parking_sessions` | Sesiones de entrada/salida con duración y costo                           |
-| `subscriptions`    | Abonos (horas, diario, mensual, anual) para usuarios                      |
-| `payments`         | Pagos vinculados a sesiones o abonos (MercadoPago/efectivo/transferencia) |
-
-## Diagrama de relaciones
-
-```
-Users ──1:N──> Vehicles ──1:N──> ParkingSessions <──N:1── ParkingSpots <──N:1── Floors
-  │                                     │
-  └──1:N──> Subscriptions               │
-                 │                       │
-                 └────────> Payments <───┘
-```
-
-### Tipos enumerados
-
-- **SpotType**: `NORMAL` | `DISABLED` | `EV_CHARGING` | `MOTORCYCLE`
-- **SessionStatus**: `ACTIVE` | `COMPLETED` | `CANCELLED`
-- **SubscriptionType**: `HOURS` | `DAILY` | `MONTHLY` | `YEARLY`
-- **SubscriptionStatus**: `ACTIVE` | `EXPIRED` | `CANCELLED`
-- **PaymentMethod**: `MERCADO_PAGO` | `CASH` | `TRANSFER`
-- **PaymentStatus**: `PENDING` | `APPROVED` | `REJECTED`
+- **Pisos y espacios**: Configuración de la cochera por pisos, cada uno con límites de altura, peso y ancho.
+- **Sesiones de estacionamiento**: Registro de entrada y salida de vehículos, cálculo de minutos y monto cobrado.
+- **Sistema de abonos**: Suscripciones por horas, diarias, mensuales o anuales para usuarios registrados.
+- **Pagos**: Módulo de pagos integrado con soporte para Mercado Pago, efectivo y transferencia.
 
 ## 🛠️ Tech Stack
 
-| Capa       | Tecnología                             |
-| ---------- | -------------------------------------- |
-| Frontend   | React 19 + TypeScript + Vite           |
-| ORM        | Prisma 7                               |
-| Base datos | PostgreSQL                             |
-| Estilos    | TailwindCSS 3                          |
-| Pagos      | Mercado Pago (integración planificada) |
+| Capa       | Tecnología                                           |
+| ---------- | ---------------------------------------------------- |
+| Frontend   | React 19 + TypeScript + Vite                         |
+| Backend    | Node.js + Express + TypeScript + JWT                 |
+| ORM        | Prisma 7                                             |
+| Base datos | PostgreSQL (vía Docker)                              |
+| Estilos    | TailwindCSS 4                                        |
+| Pagos      | Mercado Pago (integración planificada)               |
 
 ## 📁 Estructura del Proyecto
 
@@ -64,20 +32,16 @@ Users ──1:N──> Vehicles ──1:N──> ParkingSessions <──N:1─�
 Chumi/
 ├── prisma/
 │   └── schema.prisma          # Modelo de datos completo
-├── prisma.config.ts           # Configuración de Prisma
-├── mi-proyecto-react/         # Frontend React + Vite
-│   ├── src/
-│   │   ├── App.tsx
-│   │   ├── main.tsx
-│   │   └── ...
-│   ├── index.html
-│   ├── vite.config.ts
-│   ├── tsconfig.json
-│   └── package.json
-├── .env                       # Variables de entorno (NO subir al repo)
-├── .gitignore
-├── package.json               # Dependencias raíz (Prisma, Tailwind)
-└── tailwind.config.js
+├── src/                       # Backend (Express API)
+│   ├── index.ts               # Entry point
+│   ├── routes/                # Endpoints (auth, usuarios)
+│   └── middleware/            # Protecciones de ruta y JWT
+├── Proyecto/                  # Frontend (React + Vite)
+│   ├── src/                   # Componentes, vistas y contexto
+│   ├── index.css              # Estilos Tailwind v4
+│   └── vite.config.ts
+├── docker-compose.yml         # Configuración de base de datos local
+└── package.json               # Dependencias raíz y scripts de backend
 ```
 
 ## 🚀 Instalación y Setup
@@ -85,46 +49,60 @@ Chumi/
 ### Requisitos previos
 
 - Node.js 18+
-- PostgreSQL
-- npm o yarn
+- Docker (para la base de datos)
+- npm
 
-### Pasos
+### Pasos de inicialización
 
-1. **Clonar el repositorio**
+**1. Clonar el repositorio**
+```bash
+git clone https://github.com/Chicho2000/Vanguard-Botics.git
+cd Vanguard-Botics
+```
 
-   ```bash
-   git clone https://github.com/Chicho2000/Vanguard-Botics.git
-   cd Vanguard-Botics
-   ```
+**2. Instalar dependencias**
+```bash
+# Instalar dependencias del Backend (Raíz)
+npm install
 
-2. **Instalar dependencias**
+# Instalar dependencias del Frontend
+cd Proyecto
+npm install
+cd ..
+```
 
-   ```bash
-   # Dependencias raíz (Prisma, Tailwind)
-   npm install
+**3. Configurar variables de entorno**
+Crear o copiar un archivo `.env` en la raíz del proyecto con la siguiente estructura:
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/chumi"
+JWT_SECRET="secreto_super_seguro_vanguard_botics"
+FRONTEND_URL="http://localhost:5173"
+PORT=3000
+```
 
-   # Dependencias del frontend
-   cd mi-proyecto-react
-   npm install
-   ```
+**4. Levantar la Base de Datos (Docker)**
+```bash
+docker-compose up -d
+```
 
-3. **Configurar variables de entorno**
+**5. Ejecutar migraciones y generar cliente de Prisma**
+```bash
+npx prisma migrate dev --name init
+npx prisma generate
+```
 
-   Crear un archivo `.env` en la raíz del proyecto con:
+**6. Levantar los servidores de desarrollo**
+El proyecto requiere correr el backend y el frontend en simultáneo en dos terminales separadas.
 
-   ```env
-   DATABASE_URL="postgresql://usuario:password@host:puerto/nombre_db"
-   ```
+*Terminal 1 (Backend):*
+```bash
+npm run dev:backend
+```
 
-4. **Generar el cliente de Prisma y aplicar migraciones**
+*Terminal 2 (Frontend):*
+```bash
+cd Proyecto
+npm run dev
+```
 
-   ```bash
-   npx prisma generate
-   npx prisma db push
-   ```
-
-5. **Levantar el frontend en modo desarrollo**
-   ```bash
-   cd mi-proyecto-react
-   npm run dev
-   ```
+El frontend estará disponible en `http://localhost:5173` y la API en `http://localhost:3000`.

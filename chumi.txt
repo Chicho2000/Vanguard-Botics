@@ -47,4 +47,22 @@ router.get para tener una ruta para verificar el token (para ver si e usuario si
 
 middleware: es una funcion que generalmente toma 3 parametros (req, res, next). se toma los headers authorization y devolvemos 401 si no esta el token. si esta el token, verificamos que sea valido y si es valido llamamos a la funcion que queremos ejecutar (next). 
 
+...
+
+onclick= (e) => autenticar(e)
+
+auth.service y isathenticated
+
+const autenticar = async ... {if ... if ..} 
+
+-- Como va a saber el backend que un usuario esta o no registrado --
+
+2 tipos de almacenamiento: 1. cookies (para cosas mas pequeñas, ej: token, id, etc.) (contra: la puede ver cualquiera otra pestaña, agregar https-only para que tengan que mandar request para verla).2. local storage (configurar un logout y que el token expire (rotacion de tokens))(se guarda con un metodo localstorage.set() no se usa mucho pero sirve)(ventaja: podemos discriminar nosotros cuando lo mandamos y es mas seguro (tmb se usa para cosa smas grandes q las cookies)la ve solo el owner del objeto)
+
+XSS (Cross Site Scripting) 
+
+token = jwt.sign({usedId-----.UserId} , "secretito")
+res({status:200,body: {token}})
+
+localstorage.set(data.token);
 
