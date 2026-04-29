@@ -72,12 +72,27 @@ cd ..
 ```
 
 **3. Configurar variables de entorno**
-Crear o copiar un archivo `.env` en la raíz del proyecto con la siguiente estructura:
+Crear un archivo `.env` en la raíz del proyecto basándote en el formato requerido (usarás la misma URL en ambos si es una base de datos local):
 ```env
+# URL principal para consultas (Si usas Supabase, la del pooler puerto 6543)
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/chumi"
+
+# URL para migraciones y push (Conexión directa, puerto 5432)
+DIRECT_URL="postgresql://postgres:postgres@localhost:5432/chumi"
+
 JWT_SECRET="secreto_super_seguro_vanguard_botics"
 FRONTEND_URL="http://localhost:5173"
 PORT=3000
+```
+
+**4. Generar el Cliente de Prisma y Sincronizar Base de Datos**
+Dado que usamos Prisma versión 7, es necesario inicializar el cliente que se guarda en la carpeta `generated/`:
+```bash
+# Sincroniza tu base de datos con el esquema
+npx prisma db push
+
+# Genera los tipos de TypeScript del cliente
+npx prisma generate
 ```
 
 **4. Levantar la Base de Datos (Docker)**

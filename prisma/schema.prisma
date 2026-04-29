@@ -2,7 +2,7 @@
 // Schema de base de datos para sistema de estacionamiento inteligente
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
 
