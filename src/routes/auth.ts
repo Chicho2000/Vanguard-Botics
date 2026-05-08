@@ -50,7 +50,13 @@ router.post("/login", async (req, res) => {
     });
 
     const { password: _, ...userWithoutPassword } = user;
-    return res.json({ success: true, token, user: userWithoutPassword });
+    const userData = {
+      userId: user.id,
+      email: user.email,
+      nombre: user.name,
+      rol: user.role,
+    };
+    return res.json({ success: true, token, user: userData });
   } catch (error) {
     console.error("Login error:", error);
     return res.status(500).json({ success: false, message: "Error interno del servidor" });

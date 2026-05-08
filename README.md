@@ -20,9 +20,9 @@ Sistema de gestión inteligente para estacionamiento automatizado. Permite admin
 | Capa       | Tecnología                                           |
 | ---------- | ---------------------------------------------------- |
 | Frontend   | React 19 + TypeScript + Vite                         |
-| Backend    | Node.js + Express + TypeScript + JWT                 |
-| ORM        | Prisma 7                                             |
-| Base datos | PostgreSQL (vía Docker)                              |
+| Backend    | Node.js + Express 5 + TypeScript + JWT               |
+| ORM        | Prisma 7 (con driver adapter `@prisma/adapter-pg`)   |
+| Base datos | PostgreSQL 15 (vía Docker)                           |
 | Estilos    | TailwindCSS 4                                        |
 | Pagos      | Mercado Pago (integración planificada)               |
 
@@ -31,17 +31,42 @@ Sistema de gestión inteligente para estacionamiento automatizado. Permite admin
 ```
 Chumi/
 ├── prisma/
-│   └── schema.prisma          # Modelo de datos completo
-├── src/                       # Backend (Express API)
-│   ├── index.ts               # Entry point
-│   ├── routes/                # Endpoints (auth, usuarios)
-│   └── middleware/            # Protecciones de ruta y JWT
-├── Proyecto/                  # Frontend (React + Vite)
-│   ├── src/                   # Componentes, vistas y contexto
-│   ├── index.css              # Estilos Tailwind v4
+│   ├── schema.prisma              # Modelo de datos completo
+│   └── migrations/                # Migraciones de la BD
+├── prisma.config.ts               # Configuración Prisma 7 (datasource URL)
+├── src/                           # Backend (Express API)
+│   ├── index.ts                   # Entry point (Express app + server)
+│   ├── lib/
+│   │   └── prisma.ts              # Instancia del PrismaClient con adapter
+│   ├── repositories/              # Capa de acceso a datos (queries)
+│   │   └── admin.repository.ts
+│   ├── services/                  # Capa de lógica de negocio
+│   │   └── admin.service.ts
+│   ├── controllers/               # Capa HTTP (req/res)
+│   │   └── admin.controller.ts
+│   ├── routes/                    # Definición de endpoints
+│   │   ├── auth.ts
+│   │   ├── usuarios.ts
+│   │   └── admin.ts
+│   └── middleware/                # Autenticación y autorización
+│       └── auth.ts
+├── Proyecto/                      # Frontend (React + Vite)
+│   ├── src/
+│   │   ├── components/            # Componentes reutilizables
+│   │   │   ├── Login.tsx
+│   │   │   ├── Navbar.tsx
+│   │   │   └── ProtectedRoute.tsx
+│   │   ├── pages/                 # Vistas por rol
+│   │   │   ├── DashboardAdmin.tsx
+│   │   │   ├── DashboardCliente.tsx
+│   │   │   └── DashboardInvitado.tsx
+│   │   ├── services/              # Llamadas a la API
+│   │   ├── context/               # AuthContext (estado global)
+│   │   └── App.tsx                # Router principal
 │   └── vite.config.ts
-├── docker-compose.yml         # Configuración de base de datos local
-└── package.json               # Dependencias raíz y scripts de backend
+├── docker-compose.yml             # PostgreSQL local
+├── seed.ts                        # Script para crear usuarios de prueba
+└── package.json                   # Dependencias raíz y scripts
 ```
 
 ## 🚀 Instalación y Setup
@@ -49,7 +74,7 @@ Chumi/
 ### Requisitos previos
 
 - Node.js 18+
-- Docker (para la base de datos)
+- Docker Desktop (para la base de datos)
 - npm
 
 ### Pasos de inicialización
@@ -62,19 +87,22 @@ cd Vanguard-Botics
 
 **2. Instalar dependencias**
 ```bash
-# Instalar dependencias del Backend (Raíz)
+# Backend (raíz)
 npm install
 
-# Instalar dependencias del Frontend
+# Frontend
 cd Proyecto
 npm install
 cd ..
 ```
 
 **3. Configurar variables de entorno**
-Crear o copiar un archivo `.env` en la raíz del proyecto con la siguiente estructura:
+Crear un archivo `.env` en la raíz del proyecto:
 ```env
+# Base de datos local via Docker
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/chumi"
+DIRECT_URL="postgresql://postgres:postgres@localhost:5432/chumi"
+
 JWT_SECRET="secreto_super_seguro_vanguard_botics"
 FRONTEND_URL="http://localhost:5173"
 PORT=3000
@@ -87,22 +115,42 @@ docker-compose up -d
 
 **5. Ejecutar migraciones y generar cliente de Prisma**
 ```bash
-npx prisma migrate dev --name init
+npx prisma migrate deploy
 npx prisma generate
 ```
 
-**6. Levantar los servidores de desarrollo**
-El proyecto requiere correr el backend y el frontend en simultáneo en dos terminales separadas.
-
-*Terminal 1 (Backend):*
+**6. (Opcional) Crear usuario admin de prueba**
 ```bash
-npm run dev:backend
+npx tsx seed.ts
 ```
+Esto crea el usuario `admin@chumi.com` con contraseña `admin1234`.
 
-*Terminal 2 (Frontend):*
+**7. Levantar todo el entorno de desarrollo**
 ```bash
-cd Proyecto
 npm run dev
 ```
+Este único comando levanta backend y frontend simultáneamente gracias a `concurrently`.
 
-El frontend estará disponible en `http://localhost:5173` y la API en `http://localhost:3000`.
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:3000
+- **Prisma Studio** (opcional): `npx prisma studio` → http://localhost:5555
+
+## 📌 Scripts disponibles
+
+| Script | Comando | Descripción |
+| --- | --- | --- |
+| `dev` | `npm run dev` | Levanta backend + frontend juntos |
+| `dev:backend` | `npm run dev:backend` | Solo el servidor Express |
+| `dev:frontend` | `npm run dev:frontend` | Solo el frontend Vite |
+
+## 🔑 Endpoints de la API
+
+| Método | Ruta | Protegido | Descripción |
+| --- | --- | --- | --- |
+| POST | `/auth/login` | No | Login con email y password |
+| POST | `/auth/login/invitado` | No | Login por patente (sin cuenta) |
+| GET | `/auth/verify` | Sí | Verificar token JWT |
+| POST | `/auth/logout` | No | Cerrar sesión |
+| GET | `/admin/stats` | Admin | Stats del dashboard |
+| GET | `/admin/activity` | Admin | Actividad reciente |
+| GET | `/admin/floors` | Admin | Vista de pisos con ocupación |

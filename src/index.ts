@@ -4,6 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth";
 import usuariosRoutes from "./routes/usuarios";
+import adminRoutes from "./routes/admin";
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use(cookieParser());
 
 app.use("/auth", authRoutes);
 app.use("/usuarios", usuariosRoutes);
+app.use("/admin", adminRoutes);
 
 // Catch all error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
