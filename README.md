@@ -108,6 +108,16 @@ FRONTEND_URL="http://localhost:5173"
 PORT=3000
 ```
 
+**4. Generar el Cliente de Prisma y Sincronizar Base de Datos**
+Dado que usamos Prisma versión 7, es necesario inicializar el cliente que se guarda en la carpeta `generated/`:
+```bash
+# Sincroniza tu base de datos con el esquema
+npx prisma db push
+
+# Genera los tipos de TypeScript del cliente
+npx prisma generate
+```
+
 **4. Levantar la Base de Datos (Docker)**
 ```bash
 docker-compose up -d
