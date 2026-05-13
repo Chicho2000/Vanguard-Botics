@@ -1,70 +1,85 @@
 import { Navbar } from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
-import { Car, Clock, CreditCard, MapPin } from "lucide-react";
+import { Car, Clock, CreditCard, MapPin, QrCode, LogOut } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export const DashboardCliente: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Navbar />
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
-        {/* Welcome */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white">
-            Hola, <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">{user?.nombre}</span>
+      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-8 flex flex-col gap-8">
+        
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-bold">
+            Hola, <span className="text-primary">{user?.nombre}</span>
           </h2>
-          <p className="text-slate-400 mt-1">Gestioná tus vehículos y sesiones de estacionamiento</p>
+          <p className="text-muted-foreground text-sm">Tu pase rápido y estado en tiempo real</p>
         </div>
 
-        {/* My Vehicles */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Car className="w-5 h-5 text-cyan-400" />
-            Mis Vehículos
-          </h3>
-          <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6">
-            <div className="text-center py-8">
-              <Car className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400">No tenés vehículos registrados aún.</p>
-              <button className="mt-4 px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-lg shadow-blue-500/20">
-                + Agregar Vehículo
-              </button>
-            </div>
+        {/* Giant QR Code Section */}
+        <Card className="border-primary/50 shadow-lg shadow-primary/20 bg-card overflow-hidden">
+          <div className="bg-primary/10 p-4 text-center border-b border-border">
+            <p className="text-sm font-semibold text-primary uppercase tracking-wider">Pase de Barrera</p>
           </div>
-        </div>
+          <CardContent className="p-8 flex flex-col items-center justify-center">
+            <div className="bg-white p-6 rounded-2xl shadow-inner">
+              <QrCode className="w-48 h-48 text-slate-900" />
+            </div>
+            <p className="text-muted-foreground text-sm mt-6 text-center">
+              Acercá este código al lector de la barrera para ingresar o salir automáticamente.
+            </p>
+          </CardContent>
+        </Card>
 
-        {/* Active Sessions */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-emerald-400" />
-            Sesiones Activas
-          </h3>
-          <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6">
-            <div className="text-center py-8">
-              <MapPin className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400">No hay sesiones activas en este momento.</p>
-            </div>
-          </div>
+        {/* Status Section */}
+        <div className="grid grid-cols-2 gap-4">
+          <Card className="bg-card">
+            <CardContent className="p-4 flex flex-col items-center justify-center text-center gap-2">
+              <MapPin className="w-8 h-8 text-emerald-500 mb-1" />
+              <p className="text-sm text-muted-foreground">Ubicación</p>
+              <p className="font-bold">Piso 1 - A12</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-card">
+            <CardContent className="p-4 flex flex-col items-center justify-center text-center gap-2">
+              <Clock className="w-8 h-8 text-blue-500 mb-1" />
+              <p className="text-sm text-muted-foreground">Tiempo</p>
+              <p className="font-bold">02:15 hs</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Subscriptions */}
-        <div>
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-violet-400" />
-            Mis Abonos
-          </h3>
-          <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6">
-            <div className="text-center py-8">
-              <CreditCard className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400">No tenés abonos activos.</p>
-              <button className="mt-4 px-5 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white font-medium rounded-xl hover:from-violet-400 hover:to-purple-500 transition-all shadow-lg shadow-purple-500/20">
-                Ver Planes
-              </button>
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-violet-500" />
+              Tu Abono Mensual
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Plan Premium</p>
+                <p className="text-sm text-muted-foreground">Vence en 14 días</p>
+              </div>
+              <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+                Renovar
+              </Button>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+
+        <Button variant="ghost" onClick={logout} className="text-destructive hover:bg-destructive/10 mx-auto mt-4">
+          <LogOut className="w-4 h-4 mr-2" />
+          Cerrar Sesión
+        </Button>
       </main>
     </div>
   );

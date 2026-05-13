@@ -1,61 +1,62 @@
 import { Navbar } from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
-import { Car, Clock, MapPin, Timer } from "lucide-react";
+import { Car, Clock, CreditCard, LogOut } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export const DashboardInvitado: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+
+  // Mocking an active session with a balance to pay.
+  // In a real scenario, this would come from the API.
+  const balanceToPay = 1250;
+  const timeElapsed = "2h 30m";
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Navbar />
 
-      <main className="max-w-3xl mx-auto px-6 py-8">
-        {/* Patente Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl px-6 py-4 mb-4">
-            <Car className="w-8 h-8 text-cyan-400" />
-            <span className="text-3xl font-mono font-bold text-white tracking-widest">
-              {user?.patente || "---"}
+      <main className="flex-1 max-w-md mx-auto w-full px-4 py-12 flex flex-col items-center justify-center gap-8">
+        
+        {/* Patente Banner */}
+        <div className="text-center w-full">
+          <div className="inline-flex items-center gap-4 bg-primary/10 border border-primary/20 rounded-2xl px-8 py-4 mb-2 shadow-lg shadow-primary/5">
+            <Car className="w-8 h-8 text-primary" />
+            <span className="text-4xl font-mono font-black tracking-widest text-primary">
+              {user?.patente || "AB123CD"}
             </span>
           </div>
-          <p className="text-slate-400">Acceso rápido por patente — sin registro necesario</p>
+          <p className="text-muted-foreground text-sm uppercase tracking-widest font-semibold mt-4">Sesión Activa</p>
         </div>
 
-        {/* Active Session Card */}
-        <div className="bg-gradient-to-br from-slate-800/80 to-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 mb-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-emerald-500/20 p-2.5 rounded-xl">
-              <Clock className="w-6 h-6 text-emerald-400" />
+        {/* Balance Card */}
+        <Card className="w-full bg-card border-border shadow-xl">
+          <CardContent className="p-8 text-center flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Clock className="w-5 h-5" />
+              <span className="font-medium text-lg">Tiempo transcurrido: {timeElapsed}</span>
             </div>
-            <h3 className="text-lg font-semibold text-white">Estado de Estacionamiento</h3>
-          </div>
+            
+            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">Total a Pagar</p>
+            <h1 className="text-6xl font-black text-emerald-500 mb-2">${balanceToPay}</h1>
+            
+            <p className="text-sm text-muted-foreground">Tarifa plana de $500/hora</p>
+          </CardContent>
+        </Card>
 
-          <div className="text-center py-6">
-            <MapPin className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-400 text-lg">No hay sesión activa para esta patente.</p>
-            <p className="text-slate-500 text-sm mt-2">
-              Cuando ingreses a la cochera, tu sesión aparecerá aquí automáticamente.
-            </p>
-          </div>
-        </div>
+        {/* Mercado Pago Button */}
+        <Button 
+          size="lg" 
+          className="w-full h-16 text-lg font-bold bg-[#009EE3] hover:bg-[#0089C5] text-white shadow-lg shadow-[#009EE3]/20"
+        >
+          <CreditCard className="w-6 h-6 mr-3" />
+          Pagar con Mercado Pago
+        </Button>
 
-        {/* Info Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5">
-            <Timer className="w-6 h-6 text-cyan-400 mb-3" />
-            <h4 className="text-white font-medium mb-1">Tarifa por Hora</h4>
-            <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">$500</p>
-            <p className="text-slate-500 text-xs mt-1">Se cobra por minuto de estadía</p>
-          </div>
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5">
-            <Car className="w-6 h-6 text-violet-400 mb-3" />
-            <h4 className="text-white font-medium mb-1">¿Querés un abono?</h4>
-            <p className="text-slate-400 text-sm">Registrate como usuario para acceder a planes con descuento.</p>
-            <button className="mt-3 text-cyan-400 text-sm font-medium hover:text-cyan-300 transition-colors">
-              Crear cuenta →
-            </button>
-          </div>
-        </div>
+        <Button variant="ghost" onClick={logout} className="text-muted-foreground hover:bg-secondary/50 mt-4">
+          <LogOut className="w-4 h-4 mr-2" />
+          Salir
+        </Button>
       </main>
     </div>
   );

@@ -1,172 +1,251 @@
-import React, { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { Car, Lock, Mail, CreditCard, Loader2 } from "lucide-react";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/auth.service';
+import { Car, Lock, User, Mail, Phone, LogIn, UserPlus } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+type TabType = 'login' | 'registro' | 'invitado';
 
 export const Login: React.FC = () => {
-  const { login, loginInvitado, isLoading, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  const { login, register: contextRegister, loginInvitado } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<"usuario" | "invitado">("usuario");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [patente, setPatente] = useState("");
-  const [error, setError] = useState("");
+  // States
+  const [activeTab, setActiveTab] = useState<TabType>('login');
+  const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState<string>('');
 
-  const from = location.state?.from?.pathname;
-
-  // Redirección si ya está autenticado
-  React.useEffect(() => {
-    if (isAuthenticated && user) {
-      if (from) {
-        navigate(from, { replace: true });
-      } else {
-        if (user.rol === "ADMIN") navigate("/admin", { replace: true });
-        else if (user.rol === "CLIENTE") navigate("/cliente", { replace: true });
-        else if (user.rol === "INVITADO") navigate("/invitado", { replace: true });
-      }
-    }
-  }, [isAuthenticated, navigate, user, from]);
+  // Form states
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [patente, setPatente] = useState('');
+  
+  // Register specific states
+  const [regNombre, setRegNombre] = useState('');
+  const [regTelefono, setRegTelefono] = useState('');
+  const [regPasswordConfirm, setRegPasswordConfirm] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
+    setSuccess('');
+    setLoading(true);
 
     try {
-      if (activeTab === "usuario") {
-        if (!email || !password) {
-          setError("Completá todos los campos");
-          return;
-        }
+      if (activeTab === 'login') {
         await login(email, password);
-      } else {
-        if (!patente) {
-          setError("Ingresá la patente del vehículo");
-          return;
+        // After login, AuthContext updates state. We need to redirect.
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const u = JSON.parse(userStr);
+          navigate(u.rol === 'ADMIN' ? '/admin' : '/cliente');
+        } else {
+          navigate('/dashboard');
         }
+      } else if (activeTab === 'invitado') {
+        if (patente.length < 6) throw new Error('Patente inválida');
         await loginInvitado(patente);
+        navigate('/invitado', { state: { patente } });
+      } else if (activeTab === 'registro') {
+        if (password !== regPasswordConfirm) {
+          throw new Error('Las contraseñas no coinciden');
+        }
+        await contextRegister(email, password, regNombre, regTelefono);
+        setSuccess('¡Registro exitoso! Redirigiendo...');
+        setTimeout(() => navigate('/cliente'), 1500);
       }
     } catch (err: any) {
-      setError(err.message || "Error al autenticar");
+      setError(err.message || 'Error en la autenticación');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 overflow-hidden relative font-sans">
-      {/* Background animated gradients */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-blue-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-blob"></div>
-      <div className="absolute top-[20%] right-[-10%] w-[35vw] h-[35vw] bg-cyan-400 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-blob animation-delay-2000"></div>
-      <div className="absolute bottom-[-20%] left-[20%] w-[45vw] h-[45vw] bg-indigo-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob animation-delay-4000"></div>
-
-      <div className="z-10 w-full max-w-md p-8 m-4 rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
-        <div className="flex flex-col items-center mb-8">
-          <div className="bg-gradient-to-tr from-cyan-400 to-blue-600 p-4 rounded-2xl shadow-lg mb-4">
-            <Car className="w-10 h-10 text-white" />
+    <div className="min-h-screen flex bg-background">
+      {/* Left Side - Visual Render */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-muted">
+        <img 
+          src="/parking_render.png" 
+          alt="Automated Parking Facility" 
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        {/* Gradient overlay for blending */}
+        <div className="absolute inset-0 bg-gradient-to-r from-background/20 to-background"></div>
+        <div className="absolute bottom-12 left-12 max-w-md">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-primary p-3 rounded-xl shadow-lg shadow-primary/30">
+              <Car className="w-8 h-8 text-primary-foreground" />
+            </div>
+            <h1 className="text-4xl font-extrabold text-foreground">Vanguard Botics</h1>
           </div>
-          <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-300">
-            Vanguard Botics
-          </h1>
-          <p className="text-slate-400 mt-2 text-sm text-center">
-            Sistema de Estacionamiento Inteligente
+          <p className="text-xl text-muted-foreground font-medium">
+            Sistema de Estacionamiento Inteligente de Próxima Generación.
           </p>
         </div>
+      </div>
 
-        <div className="flex bg-slate-800/50 p-1 rounded-xl mb-6">
-          <button
-            type="button"
-            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
-              activeTab === "usuario"
-                ? "bg-blue-600 text-white shadow-md"
-                : "text-slate-400 hover:text-white"
-            }`}
-            onClick={() => { setActiveTab("usuario"); setError(""); }}
-          >
-            Usuario
-          </button>
-          <button
-            type="button"
-            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
-              activeTab === "invitado"
-                ? "bg-blue-600 text-white shadow-md"
-                : "text-slate-400 hover:text-white"
-            }`}
-            onClick={() => { setActiveTab("invitado"); setError(""); }}
-          >
-            Invitado
-          </button>
-        </div>
+      {/* Right Side - Forms */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+        <div className="w-full max-w-md space-y-6">
+          <div className="flex flex-col items-center lg:items-start text-center lg:text-left mb-8">
+            <h2 className="text-3xl font-bold tracking-tight mb-2">Bienvenido</h2>
+            <p className="text-muted-foreground">
+              Ingresá tus credenciales o operá como invitado
+            </p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {error && (
-            <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-sm text-center font-medium animate-pulse">
-              {error}
-            </div>
-          )}
+          <Tabs value={activeTab} onValueChange={(val) => { setActiveTab(val as TabType); setError(''); setSuccess(''); }} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-8">
+              <TabsTrigger value="login">Ingresar</TabsTrigger>
+              <TabsTrigger value="registro">Registrar</TabsTrigger>
+              <TabsTrigger value="invitado">Invitado</TabsTrigger>
+            </TabsList>
 
-          {activeTab === "usuario" ? (
-            <>
-              <div>
-                <label className="block text-slate-300 text-sm mb-2 font-medium">Correo Electrónico</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-slate-400" />
+            {error && (
+              <div className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm font-medium">
+                {error}
+              </div>
+            )}
+            
+            {success && (
+              <div className="mb-6 p-4 rounded-lg bg-green-500/10 border border-green-500/30 text-green-500 text-sm font-medium">
+                {success}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit}>
+              <TabsContent value="login" className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      placeholder="admin@chumi.com" 
+                      className="pl-9"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
                   </div>
-                  <input
-                    type="email"
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Contraseña</Label>
+                    <a href="#" className="text-sm font-medium text-primary hover:underline">
+                      ¿Olvidaste tu contraseña?
+                    </a>
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      id="password" 
+                      type="password" 
+                      className="pl-9"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full mt-6" disabled={loading}>
+                  {loading ? 'Ingresando...' : 'Iniciar Sesión'}
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="registro" className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-nombre">Nombre Completo</Label>
+                    <Input 
+                      id="reg-nombre" 
+                      placeholder="Juan Pérez" 
+                      value={regNombre}
+                      onChange={(e) => setRegNombre(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-tel">Teléfono</Label>
+                    <Input 
+                      id="reg-tel" 
+                      placeholder="+54 9 11 1234-5678" 
+                      value={regTelefono}
+                      onChange={(e) => setRegTelefono(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reg-email">Email</Label>
+                  <Input 
+                    id="reg-email" 
+                    type="email" 
+                    placeholder="tucorreo@ejemplo.com" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-slate-800/50 border border-slate-600 text-white rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all placeholder-slate-500"
-                    placeholder="ejemplo@correo.com"
+                    required
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-slate-300 text-sm mb-2 font-medium">Contraseña</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-slate-400" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-pass">Contraseña</Label>
+                    <Input 
+                      id="reg-pass" 
+                      type="password" 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
                   </div>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-slate-800/50 border border-slate-600 text-white rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all placeholder-slate-500"
-                    placeholder="••••••••"
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-pass-confirm">Repetir Contraseña</Label>
+                    <Input 
+                      id="reg-pass-confirm" 
+                      type="password" 
+                      value={regPasswordConfirm}
+                      onChange={(e) => setRegPasswordConfirm(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full mt-6" disabled={loading}>
+                  {loading ? 'Creando cuenta...' : 'Crear Cuenta'}
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="invitado" className="space-y-6">
+                <div className="text-center space-y-2">
+                  <h3 className="text-lg font-medium">Acceso Rápido</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Ingresá tu patente para ver el estado de tu vehículo y pagar.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Input 
+                    id="patente" 
+                    placeholder="Ej: AB 123 CD" 
+                    className="text-center text-2xl uppercase tracking-widest h-16 font-bold"
+                    value={patente}
+                    onChange={(e) => setPatente(e.target.value.toUpperCase())}
+                    maxLength={8}
+                    required
                   />
                 </div>
-              </div>
-            </>
-          ) : (
-            <div>
-              <label className="block text-slate-300 text-sm mb-2 font-medium">Patente del Vehículo</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <CreditCard className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="text"
-                  value={patente}
-                  onChange={(e) => setPatente(e.target.value.toUpperCase())}
-                  className="w-full bg-slate-800/50 border border-slate-600 text-white rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all placeholder-slate-500 uppercase tracking-widest font-mono text-center"
-                  placeholder="AB 123 CD"
-                />
-              </div>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-3 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transform transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-slate-900 disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center"
-          >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              activeTab === "usuario" ? "Ingresar a la Plataforma" : "Acceso Rápido"
-            )}
-          </button>
-        </form>
+                <Button type="submit" size="lg" className="w-full h-14 text-lg bg-green-600 hover:bg-green-700 text-white" disabled={loading}>
+                  Buscar Vehículo
+                </Button>
+              </TabsContent>
+            </form>
+          </Tabs>
+        </div>
       </div>
     </div>
   );

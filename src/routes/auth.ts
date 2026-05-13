@@ -13,6 +13,77 @@ const loginSchema = z.object({
   password: z.string().min(6, "Contraseña mínima 6 caracteres"),
 });
 
+const registerSchema = z.object({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(6, "Contraseña mínima 6 caracteres"),
+  name: z.string().min(2, "Nombre mínimo 2 caracteres"),
+  phone: z.string().optional(),
+});
+
+// ─── REGISTRO DE NUEVO USUARIO ───────────────────────────────
+router.post("/register", async (req, res) => {
+  try {
+    const parsed = registerSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const errors = parsed.error.issues.map((e) => e.message);
+      return res.status(400).json({ success: false, message: errors.join(", ") });
+    }
+
+    const { email, password, name, phone } = parsed.data;
+    const normalizedEmail = email.toLowerCase();
+
+    // Verificar si el email ya existe
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (existing) {
+      return res.status(409).json({ success: false, message: "Ya existe una cuenta con este email" });
+    }
+
+    // Hash de la contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Crear usuario
+    const user = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        password: hashedPassword,
+        name,
+        phone: phone || null,
+        role: "CLIENTE",
+      },
+    });
+
+    // Generar token automáticamente (login inmediato post-registro)
+    const tokenPayload = {
+      userId: user.id,
+      email: user.email,
+      nombre: user.name,
+      rol: user.role,
+    };
+
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: "7d" });
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    const userData = {
+      userId: user.id,
+      email: user.email,
+      nombre: user.name,
+      rol: user.role,
+    };
+
+    return res.status(201).json({ success: true, token, user: userData });
+  } catch (error) {
+    console.error("Register error:", error);
+    return res.status(500).json({ success: false, message: "Error interno del servidor" });
+  }
+});
+
+// ─── LOGIN ───────────────────────────────────────────────────
 router.post("/login", async (req, res) => {
   try {
     const parsed = loginSchema.safeParse(req.body);

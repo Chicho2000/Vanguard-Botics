@@ -13,6 +13,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   login: (email: string, pass: string) => Promise<void>;
+  register: (email: string, pass: string, name: string, phone?: string) => Promise<void>;
   loginInvitado: (licensePlate: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
@@ -46,6 +47,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const register = async (email: string, pass: string, name: string, phone?: string) => {
+    setIsLoading(true);
+    try {
+      const { user: userData } = await authService.register({ email, password: pass, name, phone });
+      setUser(userData);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const loginInvitado = async (licensePlate: string) => {
     setIsLoading(true);
     try {
@@ -67,6 +78,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     user,
     isAuthenticated: !!user,
     login,
+    register,
     loginInvitado,
     logout,
     isLoading

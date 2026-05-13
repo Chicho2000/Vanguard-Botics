@@ -66,3 +66,10 @@ res({status:200,body: {token}})
 
 localstorage.set(data.token);
 
+-- cronograma 6to info 2026 --
+
+domingo 17 backend y login funcionando
+
+jueves 28/viernes 29: reunion breve con cada grupo para ver avances de los trabajos propuestos. 
+¿como reparten tareas dentro del grupo?
+cronograma propuesto para finalizacion de cada etapa en la que piensan dividir el trabajo
