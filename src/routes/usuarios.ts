@@ -42,7 +42,7 @@ router.post("/", requireAdmin, async (req, res) => {
 router.get("/:id", requireAdmin, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
-      where: { id: parseInt(req.params.id) },
+      where: { id: parseInt(req.params.id as string, 10) },
       select: { id: true, email: true, name: true, phone: true, role: true }
     });
     if (!user) return res.status(404).json({ success: false, message: "Usuario no encontrado" });
@@ -57,7 +57,7 @@ router.put("/:id", requireAdmin, async (req, res) => {
   try {
     const { email, name, phone, role } = req.body;
     const user = await prisma.user.update({
-      where: { id: parseInt(req.params.id) },
+      where: { id: parseInt(req.params.id as string, 10) },
       data: { email, name, phone, role },
       select: { id: true, email: true, name: true, role: true }
     });
@@ -75,7 +75,7 @@ router.patch("/:id", requireAdmin, async (req, res) => {
       data.password = await bcrypt.hash(data.password, 10);
     }
     const user = await prisma.user.update({
-      where: { id: parseInt(req.params.id) },
+      where: { id: parseInt(req.params.id as string, 10) },
       data,
       select: { id: true, email: true, name: true, role: true }
     });
@@ -87,7 +87,7 @@ router.patch("/:id", requireAdmin, async (req, res) => {
 
 router.delete("/:id", requireAdmin, async (req, res) => {
   try {
-    await prisma.user.delete({ where: { id: parseInt(req.params.id) } });
+    await prisma.user.delete({ where: { id: parseInt(req.params.id as string, 10) } });
     res.json({ success: true, message: "Usuario eliminado" });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error al eliminar" });

@@ -22,7 +22,7 @@ Sistema de gestión inteligente para estacionamiento automatizado. Permite admin
 | Frontend   | React 19 + TypeScript + Vite                         |
 | Backend    | Node.js + Express 5 + TypeScript + JWT               |
 | ORM        | Prisma 7 (con driver adapter `@prisma/adapter-pg`)   |
-| Base datos | PostgreSQL 15 (vía Docker)                           |
+| Base datos | PostgreSQL en la nube (vía Supabase)                 |
 | Estilos    | TailwindCSS 4                                        |
 | Pagos      | Mercado Pago (integración planificada)               |
 
@@ -64,7 +64,6 @@ Chumi/
 │   │   ├── context/               # AuthContext (estado global)
 │   │   └── App.tsx                # Router principal
 │   └── vite.config.ts
-├── docker-compose.yml             # PostgreSQL local
 ├── seed.ts                        # Script para crear usuarios de prueba
 └── package.json                   # Dependencias raíz y scripts
 ```
@@ -74,7 +73,6 @@ Chumi/
 ### Requisitos previos
 
 - Node.js 18+
-- Docker Desktop (para la base de datos)
 - npm
 
 ### Pasos de inicialización
@@ -97,18 +95,20 @@ cd ..
 ```
 
 **3. Configurar variables de entorno**
-Crear un archivo `.env` en la raíz del proyecto:
+Crear un archivo `.env` en la raíz del proyecto (solicitar las credenciales de Supabase al administrador):
+
+> **⚠️ IMPORTANTE:** Asegúrate de que el archivo se llame exactamente `.env` (no `.env.txt`) y esté ubicado en la **raíz del proyecto**, no dentro de la carpeta `prisma/`. Si usas Windows, ten cuidado de que no se guarde con extensiones ocultas.
 ```env
-# Base de datos local via Docker
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/chumi"
-DIRECT_URL="postgresql://postgres:postgres@localhost:5432/chumi"
+# Base de datos en la nube (Supabase)
+DATABASE_URL="postgresql://usuario:password@host.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://usuario:password@host.pooler.supabase.com:5432/postgres"
 
 JWT_SECRET="secreto_super_seguro_vanguard_botics"
 FRONTEND_URL="http://localhost:5173"
 PORT=3000
 ```
 
-**4. Generar el Cliente de Prisma y Sincronizar Base de Datos**
+**4. Sincronizar Base de Datos y Generar Cliente de Prisma**
 Dado que usamos Prisma versión 7, es necesario inicializar el cliente que se guarda en la carpeta `generated/`:
 ```bash
 # Sincroniza tu base de datos con el esquema
@@ -118,24 +118,13 @@ npx prisma db push
 npx prisma generate
 ```
 
-**4. Levantar la Base de Datos (Docker)**
-```bash
-docker-compose up -d
-```
-
-**5. Ejecutar migraciones y generar cliente de Prisma**
-```bash
-npx prisma migrate deploy
-npx prisma generate
-```
-
-**6. (Opcional) Crear usuario admin de prueba**
+**5. (Opcional) Crear usuario admin de prueba**
 ```bash
 npx tsx seed.ts
 ```
 Esto crea el usuario `admin@chumi.com` con contraseña `admin1234`.
 
-**7. Levantar todo el entorno de desarrollo**
+**6. Levantar todo el entorno de desarrollo**
 ```bash
 npm run dev
 ```

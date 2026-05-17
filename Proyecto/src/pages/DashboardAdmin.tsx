@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { adminService } from "../services/admin.service";
 import { 
-  Users, User, Car, Layers, CreditCard, Clock, Loader2, AlertCircle, 
+  Users, User, Car, Layers, CreditCard, Loader2, AlertCircle, 
   LayoutDashboard, Map, Settings, LogOut 
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

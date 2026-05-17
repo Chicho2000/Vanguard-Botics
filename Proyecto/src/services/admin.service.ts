@@ -1,6 +1,8 @@
 import { authService } from "./auth.service";
 
-const API_URL = "http://localhost:3000";
+const API_URL = window.location.pathname.startsWith('/~')
+  ? `/${window.location.pathname.split('/')[1]}/api`
+  : 'http://localhost:3000';
 
 async function fetchWithAuth(url: string) {
   const token = authService.getToken();

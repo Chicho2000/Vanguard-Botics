@@ -1,7 +1,8 @@
+import React from "react";
 import { Navbar } from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
-import { Car, Clock, CreditCard, MapPin, QrCode, LogOut } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Clock, CreditCard, MapPin, QrCode, LogOut } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export const DashboardCliente: React.FC = () => {

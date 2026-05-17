@@ -1,4 +1,6 @@
-const API_URL = "http://localhost:3000";
+const API_URL = window.location.pathname.startsWith('/~')
+  ? `/${window.location.pathname.split('/')[1]}/api`
+  : 'http://localhost:3000';
 
 export const authService = {
   async login(email: string, password: string) {

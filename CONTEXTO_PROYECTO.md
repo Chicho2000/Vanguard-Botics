@@ -9,7 +9,7 @@ Este archivo sirve como "punto de guardado" para saber exactamente dónde estamo
 1. **Arquitectura Base Inicializada:**
    - **Frontend:** React 19 + TypeScript + Vite (ubicado en `/Proyecto`).
    - **Backend:** Node.js + Express + TypeScript (ubicado en `/src` en la raíz).
-   - **Base de Datos:** PostgreSQL corriendo vía Docker (`docker-compose.yml`) en el puerto `5432`.
+   - **Base de Datos:** PostgreSQL alojada en la nube usando Supabase.
    - **ORM:** Prisma 7 configurado y con el cliente generado.
    - **Estilos:** Tailwind CSS v4 configurado correctamente en el frontend usando `@tailwindcss/postcss`.
 
@@ -24,8 +24,8 @@ Este archivo sirve como "punto de guardado" para saber exactamente dónde estamo
 
 ## 🟡 Próximos pasos a desarrollar (Roadmap)
 
-1. **Integración con Supabase (Opcional/Visual):**
-   - Conectar la base de datos PostgreSQL local (o migrarla) a un proyecto en Supabase para tener una interfaz visual (Studio) más amigable que permita ver tablas, filas y administrar usuarios fácilmente.
+1. **Integración con Supabase (Completada):**
+   - La base de datos local fue migrada a Supabase, obteniendo una infraestructura cloud y acceso al panel visual (Studio) para administrar datos.
 
 2. **Desarrollo de Paneles (Dashboards):**
    - **Admin:** Crear vista para ver usuarios, estado de la cochera en tiempo real y métricas financieras.
@@ -42,6 +42,6 @@ Este archivo sirve como "punto de guardado" para saber exactamente dónde estamo
 
 ## 💡 Comandos Rápidos para Arrancar
 
-- **Levantar BD:** `docker-compose up -d`
+
 - **Backend:** `npm run dev:backend` (puerto 3000)
 - **Frontend:** `cd Proyecto && npm run dev` (puerto 5173)
