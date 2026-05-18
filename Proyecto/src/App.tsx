@@ -6,10 +6,14 @@ import { DashboardAdmin } from './pages/DashboardAdmin';
 import { DashboardCliente } from './pages/DashboardCliente';
 import { DashboardInvitado } from './pages/DashboardInvitado';
 
+const basename = window.location.pathname.startsWith('/~')
+  ? `/${window.location.pathname.split('/')[1]}`
+  : '/';
+
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <Router basename={basename}>
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
