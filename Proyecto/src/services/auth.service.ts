@@ -66,7 +66,7 @@ export const authService = {
   logout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    return fetch(`${API_URL}/auth/logout`, { method: "POST" }).catch(() => {});
+    return fetch(`${API_URL}/auth/logout`, { method: "POST" }).catch(() => { });
   },
 
   getCurrentUser() {
