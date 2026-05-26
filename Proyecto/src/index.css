@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -23,16 +22,18 @@
   animation-delay: 4s;
 }
 
+/* ─── TIPOGRAFÍA INDUSTRIAL ─────────────────────────────────── */
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', sans-serif;
+  --font-heading: 'Space Grotesk', system-ui, sans-serif;
+  --font-sans: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -71,6 +72,10 @@ body {
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Industrial accent colors as theme tokens */
+  --color-cyan-electric: #00f0ff;
+  --color-orange-industrial: #ff6b2c;
 }
 
 :root {
@@ -80,7 +85,7 @@ body {
   --card-foreground: oklch(0.145 0.015 240);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0.015 240);
-  --primary: oklch(0.485 0.22 255); /* High-tech electric royal blue */
+  --primary: oklch(0.485 0.22 255);
   --primary-foreground: oklch(0.985 0.005 240);
   --secondary: oklch(0.96 0.01 240);
   --secondary-foreground: oklch(0.205 0.015 240);
@@ -94,11 +99,11 @@ body {
   --input: oklch(0.91 0.01 240);
   --ring: oklch(0.485 0.22 255);
   --chart-1: oklch(0.485 0.22 255);
-  --chart-2: oklch(0.627 0.194 149.214); /* Emerald green success */
-  --chart-3: oklch(0.769 0.188 70.08); /* Amber warning */
-  --chart-4: oklch(0.598 0.231 306.994); /* Purple */
+  --chart-2: oklch(0.627 0.194 149.214);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.598 0.231 306.994);
   --chart-5: oklch(0.55 0.22 25);
-  --radius: 0.75rem; /* Smoother modern rounded corners */
+  --radius: 0rem; /* INDUSTRIAL: bordes cuadrados */
   --sidebar: oklch(0.985 0.005 240);
   --sidebar-foreground: oklch(0.145 0.015 240);
   --sidebar-primary: oklch(0.485 0.22 255);
@@ -109,39 +114,40 @@ body {
   --sidebar-ring: oklch(0.485 0.22 255);
 }
 
+/* ─── DARK THEME — Professional control room ────────────────── */
 .dark {
-  --background: #080c14; /* Deep premium space black/navy */
-  --foreground: #f1f5f9; /* Slate-50 high contrast text */
-  --card: #0f172a; /* Slate-900 beautiful card background */
-  --card-foreground: #f1f5f9;
-  --popover: #0f172a;
-  --popover-foreground: #f1f5f9;
-  --primary: #38bdf8; /* Cyber neon cyan/blue */
-  --primary-foreground: #080c14; /* Dark text for contrast */
-  --secondary: #1e293b; /* Slate-800 secondary buttons */
-  --secondary-foreground: #f1f5f9;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8; /* Slate-400 */
-  --accent: #0f172a;
-  --accent-foreground: #38bdf8;
-  --destructive: #f43f5e; /* Cyber rose/red */
+  --background: #050508; /* Negro profundo original */
+  --foreground: #e8ecf1;
+  --card: #0a0c12; /* Card oscuro original */
+  --card-foreground: #e8ecf1;
+  --popover: #0a0c12;
+  --popover-foreground: #e8ecf1;
+  --primary: #00f0ff; /* Cian eléctrico */
+  --primary-foreground: #050508;
+  --secondary: #111318;
+  --secondary-foreground: #e8ecf1;
+  --muted: #111318;
+  --muted-foreground: #8892a4;
+  --accent: #0a0c12;
+  --accent-foreground: #ff6b2c; /* Naranja industrial */
+  --destructive: #f43f5e;
   --destructive-foreground: #ffffff;
-  --border: #1e293b;
-  --input: #1e293b;
-  --ring: #38bdf8;
-  --chart-1: #38bdf8;
-  --chart-2: #10b981; /* Neon emerald success */
-  --chart-3: #f59e0b; /* Amber */
-  --chart-4: #a855f7; /* Purple */
+  --border: #141820; /* Border sutil original */
+  --input: #141820;
+  --ring: #00f0ff;
+  --chart-1: #00f0ff;
+  --chart-2: #ff6b2c; /* Naranja en vez del verde genérico */
+  --chart-3: #f59e0b;
+  --chart-4: #a855f7;
   --chart-5: #f43f5e;
-  --sidebar: #080c14;
-  --sidebar-foreground: #f1f5f9;
-  --sidebar-primary: #38bdf8;
-  --sidebar-primary-foreground: #080c14;
-  --sidebar-accent: #1e293b;
-  --sidebar-accent-foreground: #38bdf8;
-  --sidebar-border: #1e293b;
-  --sidebar-ring: #38bdf8;
+  --sidebar: #050508;
+  --sidebar-foreground: #e8ecf1;
+  --sidebar-primary: #00f0ff;
+  --sidebar-primary-foreground: #050508;
+  --sidebar-accent: #111318;
+  --sidebar-accent-foreground: #00f0ff;
+  --sidebar-border: #141820;
+  --sidebar-ring: #00f0ff;
 }
 
 @layer base {
@@ -154,4 +160,23 @@ body {
   html {
     @apply font-sans;
   }
+}
+
+/* ─── DOT-MATRIX + GRID TEXTURE (Dark mode only) ───────────── */
+.dark body {
+  background-image:
+    /* Subtle ambient gradient for depth */
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(0, 240, 255, 0.04), transparent),
+    /* Dot matrix pattern */
+    radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    /* Grid lines */
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    20px 20px,
+    60px 60px,
+    60px 60px;
+  background-position: 0 0, 0 0, 0 0, 0 0;
+  background-attachment: fixed, fixed, fixed, fixed;
 }

@@ -18,29 +18,29 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className="bg-slate-800/60 backdrop-blur-xl border-b border-slate-700/50">
+    <nav className="bg-background/80 backdrop-blur-xl border-b border-border">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-gradient-to-tr from-cyan-400 to-blue-600 p-2 rounded-xl">
-            <span className="text-white font-bold text-lg">VB</span>
+          <div className="bg-gradient-to-tr from-[#00f0ff] to-[#0089C5] p-2">
+            <span className="text-white font-bold text-lg font-mono">VB</span>
           </div>
           <div>
-            <h1 className="text-white font-bold text-lg leading-tight">Vanguard Botics</h1>
-            <p className="text-slate-400 text-xs">Cochera Inteligente</p>
+            <h1 className="text-white font-bold text-lg leading-tight tracking-wider uppercase">Vanguard Botics</h1>
+            <p className="text-[#8892a4] text-xs font-mono uppercase tracking-[0.15em]">Cochera Inteligente</p>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-slate-700/40 px-3 py-2 rounded-xl">
-            <User className="w-4 h-4 text-cyan-400" />
+          <div className="flex items-center gap-2 bg-secondary/60 px-3 py-2 border border-border">
+            <User className="w-4 h-4 text-[#00f0ff]" />
             <div className="text-sm">
               <span className="text-white font-medium">{user?.nombre}</span>
-              <span className="text-slate-400 ml-2 text-xs">{rolLabels[user?.rol || ""] || user?.rol}</span>
+              <span className="text-[#8892a4] ml-2 text-xs font-mono">{rolLabels[user?.rol || ""] || user?.rol}</span>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/40 text-red-300 hover:text-white text-sm font-medium rounded-xl border border-red-500/30 hover:border-red-500/50 transition-all duration-200"
+            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-white text-sm font-medium border border-red-500/20 hover:border-red-500/40 transition-all duration-200"
           >
             <LogOut className="w-4 h-4" />
             Salir

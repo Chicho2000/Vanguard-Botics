@@ -1,12 +1,9 @@
 import { Router } from "express";
-import { prisma } from "../lib/prisma";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { requireAuth, AuthRequest } from "../middleware/auth";
+import { authService } from "../services/auth.service";
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || "default_secret_key_change_me_in_production";
 
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -29,55 +26,14 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ success: false, message: errors.join(", ") });
     }
 
-    const { email, password, name, phone } = parsed.data;
-    const normalizedEmail = email.toLowerCase();
+    const { token, cookieOptions, user } = await authService.register(parsed.data);
 
-    // Verificar si el email ya existe
-    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-    if (existing) {
-      return res.status(409).json({ success: false, message: "Ya existe una cuenta con este email" });
+    res.cookie("token", token, cookieOptions);
+    return res.status(201).json({ success: true, token, user });
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({ success: false, message: error.message });
     }
-
-    // Hash de la contraseña
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Crear usuario
-    const user = await prisma.user.create({
-      data: {
-        email: normalizedEmail,
-        password: hashedPassword,
-        name,
-        phone: phone || null,
-        role: "CLIENTE",
-      },
-    });
-
-    // Generar token automáticamente (login inmediato post-registro)
-    const tokenPayload = {
-      userId: user.id,
-      email: user.email,
-      nombre: user.name,
-      rol: user.role,
-    };
-
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: "7d" });
-
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    const userData = {
-      userId: user.id,
-      email: user.email,
-      nombre: user.name,
-      rol: user.role,
-    };
-
-    return res.status(201).json({ success: true, token, user: userData });
-  } catch (error) {
     console.error("Register error:", error);
     return res.status(500).json({ success: false, message: "Error interno del servidor" });
   }
@@ -91,83 +47,44 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ success: false, message: "Credenciales incorrectas" });
     }
 
-    const email = parsed.data.email.toLowerCase();
-    const { password } = parsed.data;
+    const { token, cookieOptions, user } = await authService.login(
+      parsed.data.email,
+      parsed.data.password
+    );
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      return res.status(401).json({ success: false, message: "Credenciales incorrectas" });
+    res.cookie("token", token, cookieOptions);
+    return res.json({ success: true, token, user });
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({ success: false, message: error.message });
     }
-
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
-      return res.status(401).json({ success: false, message: "Credenciales incorrectas" });
-    }
-
-    const tokenPayload = {
-      userId: user.id,
-      email: user.email,
-      nombre: user.name,
-      rol: user.role,
-    };
-
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: "7d" });
-
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    const { password: _, ...userWithoutPassword } = user;
-    const userData = {
-      userId: user.id,
-      email: user.email,
-      nombre: user.name,
-      rol: user.role,
-    };
-    return res.json({ success: true, token, user: userData });
-  } catch (error) {
     console.error("Login error:", error);
     return res.status(500).json({ success: false, message: "Error interno del servidor" });
   }
 });
 
-router.post("/login/invitado", async (req, res) => {
+// ─── LOGIN INVITADO ──────────────────────────────────────────
+router.post("/login/invitado", (req, res) => {
   try {
     const { licensePlate } = req.body;
-    if (!licensePlate) {
-      return res.status(400).json({ success: false, message: "Patente requerida" });
+    const { token, cookieOptions, user } = authService.loginInvitado(licensePlate);
+
+    res.cookie("token", token, cookieOptions);
+    return res.json({ success: true, token, user });
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({ success: false, message: error.message });
     }
-
-    const tokenPayload = {
-      userId: 0,
-      email: `invitado_${licensePlate}@local`,
-      nombre: `Invitado (${licensePlate})`,
-      rol: "INVITADO",
-      patente: licensePlate
-    };
-
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: "1d" });
-
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 24 * 60 * 60 * 1000,
-    });
-
-    return res.json({ success: true, token, user: tokenPayload });
-  } catch (error) {
     return res.status(500).json({ success: false, message: "Error interno del servidor" });
   }
 });
 
+// ─── VERIFICAR TOKEN ─────────────────────────────────────────
 router.get("/verify", requireAuth, (req: AuthRequest, res) => {
   return res.json({ success: true, user: req.user });
 });
 
+// ─── LOGOUT ──────────────────────────────────────────────────
 router.post("/logout", (req, res) => {
   res.clearCookie("token");
   return res.json({ success: true, message: "Logged out" });
