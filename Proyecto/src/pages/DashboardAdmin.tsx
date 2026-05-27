@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Dock from "@/components/ui/Dock";
 import type { DockItemData } from "@/components/ui/Dock";
+import VanguardCarIcon from "@/components/ui/VanguardCarIcon";
 
 interface Stats {
   totalSpots: number;
@@ -42,15 +43,8 @@ interface FloorOverview {
   availableSpots: number;
 }
 
-const mockChartData = [
-  { time: '08:00', ocupacion: 10, recaudacion: 500 },
-  { time: '10:00', ocupacion: 25, recaudacion: 1500 },
-  { time: '12:00', ocupacion: 60, recaudacion: 4000 },
-  { time: '14:00', ocupacion: 85, recaudacion: 7500 },
-  { time: '16:00', ocupacion: 70, recaudacion: 9000 },
-  { time: '18:00', ocupacion: 95, recaudacion: 12000 },
-  { time: '20:00', ocupacion: 40, recaudacion: 13500 },
-];
+// Chart data will come from API — no mock data
+const chartData: { time: string; ocupacion: number; recaudacion: number }[] = [];
 
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -170,7 +164,7 @@ export const DashboardAdmin: React.FC = () => {
       <aside className="w-66 border-r border-border bg-background/80 backdrop-blur-md hidden md:flex flex-col z-20">
         <div className="h-16 flex items-center px-6 border-b border-border gap-3">
           <div className="bg-[#00f0ff]/10 border border-[#00f0ff]/20 p-2 shadow-[0_0_8px_rgba(0,240,255,0.2)]">
-            <Car className="w-5 h-5 text-[#00f0ff] drop-shadow-[0_0_4px_rgba(0,240,255,0.4)]" />
+            <VanguardCarIcon className="text-[#00f0ff] drop-shadow-[0_0_4px_rgba(0,240,255,0.4)]" size={20} />
           </div>
           <span className="font-black text-base uppercase tracking-[0.2em] bg-gradient-to-r from-[#00f0ff] to-cyan-300 bg-clip-text text-transparent">Vanguard</span>
         </div>
@@ -226,11 +220,6 @@ export const DashboardAdmin: React.FC = () => {
             <h1 className="text-lg font-black uppercase tracking-[0.15em] text-[#e8ecf1]">Centro de Comando</h1>
           </div>
           <div className="flex items-center gap-3.5">
-            <span className="flex h-2.5 w-2.5 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff6b2c] opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#ff6b2c] shadow-[0_0_8px_rgba(255,107,44,0.8)]"></span>
-            </span>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ff6b2c] font-mono">Sistema En Línea</span>
           </div>
         </header>
 
@@ -262,34 +251,41 @@ export const DashboardAdmin: React.FC = () => {
                 <CardDescription className="text-xs text-[#8892a4] font-mono">Métricas analíticas del día en curso</CardDescription>
               </CardHeader>
               <CardContent className="px-6 pb-5">
-                <div className="h-[280px] w-full mt-4 select-none">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={mockChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorOcupacion" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#00f0ff" stopOpacity={0.35}/>
-                          <stop offset="95%" stopColor="#00f0ff" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#141820" vertical={false} />
-                      <XAxis dataKey="time" stroke="#8892a4" fontSize={11} className="font-mono" tickLine={false} axisLine={false} />
-                      <YAxis stroke="#8892a4" fontSize={11} className="font-mono" tickLine={false} axisLine={false} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#0a0c12', borderColor: '#141820', borderRadius: '0px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)' }}
-                        itemStyle={{ color: '#00f0ff', fontWeight: 'bold', fontFamily: 'JetBrains Mono' }}
-                        labelStyle={{ color: '#8892a4', fontSize: '11px', fontWeight: 'bold', fontFamily: 'JetBrains Mono' }}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="ocupacion" 
-                        stroke="#00f0ff" 
-                        strokeWidth={2.5}
-                        fillOpacity={1} 
-                        fill="url(#colorOcupacion)" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+                {chartData.length > 0 ? (
+                  <div className="h-[280px] w-full mt-4 select-none">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorOcupacion" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#00f0ff" stopOpacity={0.35}/>
+                            <stop offset="95%" stopColor="#00f0ff" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#141820" vertical={false} />
+                        <XAxis dataKey="time" stroke="#8892a4" fontSize={11} className="font-mono" tickLine={false} axisLine={false} />
+                        <YAxis stroke="#8892a4" fontSize={11} className="font-mono" tickLine={false} axisLine={false} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#0a0c12', borderColor: '#141820', borderRadius: '0px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)' }}
+                          itemStyle={{ color: '#00f0ff', fontWeight: 'bold', fontFamily: 'JetBrains Mono' }}
+                          labelStyle={{ color: '#8892a4', fontSize: '11px', fontWeight: 'bold', fontFamily: 'JetBrains Mono' }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="ocupacion" 
+                          stroke="#00f0ff" 
+                          strokeWidth={2.5}
+                          fillOpacity={1} 
+                          fill="url(#colorOcupacion)" 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-[280px] w-full mt-4 flex flex-col items-center justify-center text-[#8892a4] gap-3">
+                    <ShieldCheck className="w-10 h-10 opacity-40" />
+                    <span className="text-xs font-semibold font-mono uppercase tracking-widest">Sin datos de telemetría disponibles</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
