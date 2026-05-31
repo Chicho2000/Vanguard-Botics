@@ -193,3 +193,14 @@ model Payment {
 
   @@map("payments")
 }
+
+// ──────────────────────────────────────────────
+// 8. Configuración del sistema
+// ──────────────────────────────────────────────
+model SystemConfig {
+  key   String @id
+  value String
+
+  @@map("system_configs")
+}
+

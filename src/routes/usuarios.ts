@@ -2,11 +2,26 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import bcrypt from "bcrypt";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { adminService } from "../services/admin.service";
 
 const router = Router();
 
 // Proteger todas las rutas de usuarios
 router.use(requireAuth);
+
+router.get("/floors", async (req: any, res) => {
+  try {
+    const userId = req.user.userId;
+    const role = req.user.rol;
+    const userPlate = req.user.patente;
+
+    const floors = await adminService.getFloorsOverviewForUser(userId, role, userPlate);
+    res.json({ success: true, data: floors });
+  } catch (error) {
+    console.error("Error fetching floors for user:", error);
+    res.status(500).json({ success: false, message: "Error al obtener mapa de cocheras" });
+  }
+});
 
 router.get("/", requireAdmin, async (req, res) => {
   try {

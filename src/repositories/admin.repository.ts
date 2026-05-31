@@ -60,7 +60,27 @@ export const adminRepository = {
     return await prisma.floor.findMany({
       include: {
         spots: {
-          select: { id: true, label: true, isOccupied: true, spotType: true },
+          select: {
+            id: true,
+            label: true,
+            isOccupied: true,
+            spotType: true,
+            sessions: {
+              where: { status: "ACTIVE" },
+              take: 1,
+              select: {
+                entryAt: true,
+                vehicle: {
+                  select: {
+                    licensePlate: true,
+                    brand: true,
+                    model: true,
+                    color: true,
+                  },
+                },
+              },
+            },
+          },
         },
       },
       orderBy: { level: "asc" },
