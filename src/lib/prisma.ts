@@ -1,3 +1,4 @@
+// Prisma client singleton — regenerado con SystemConfig model
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
