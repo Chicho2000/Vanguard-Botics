@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminService } from "../services/admin.service";
-import { 
-  Users, Car, Layers, CreditCard, Loader2, AlertCircle, 
+import {
+  Users, Car, Layers, CreditCard, Loader2, AlertCircle,
   LayoutDashboard, Map, Settings, LogOut, ShieldCheck
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -34,6 +35,20 @@ interface RecentSession {
   amount: number | null;
 }
 
+interface FloorSpot {
+  id: number;
+  label: string;
+  isOccupied: boolean;
+  spotType: string;
+  vehicle: {
+    licensePlate: string;
+    brand: string | null;
+    model: string | null;
+    color: string | null;
+    entryAt: string;
+  } | null;
+}
+
 interface FloorOverview {
   id: number;
   name: string;
@@ -41,6 +56,7 @@ interface FloorOverview {
   totalSpots: number;
   occupiedSpots: number;
   availableSpots: number;
+  spots: FloorSpot[];
 }
 
 // Chart data will come from API — no mock data
@@ -58,25 +74,30 @@ function formatTimeAgo(dateStr: string): string {
 
 export const DashboardAdmin: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<Stats | null>(null);
   const [activity, setActivity] = useState<RecentSession[]>([]);
-  const [floors, setFloors] = useState<FloorOverview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    document.documentElement.classList.add("admin-active");
+    return () => {
+      document.documentElement.classList.remove("admin-active");
+    };
+  }, []);
 
   useEffect(() => {
     async function loadDashboard() {
       try {
         setLoading(true);
         setError("");
-        const [statsData, activityData, floorsData] = await Promise.all([
+        const [statsData, activityData] = await Promise.all([
           adminService.getStats(),
           adminService.getRecentActivity(),
-          adminService.getFloors(),
         ]);
         setStats(statsData);
         setActivity(activityData);
-        setFloors(floorsData);
       } catch (err: any) {
         setError(err.message || "Error al cargar el dashboard");
       } finally {
@@ -88,10 +109,10 @@ export const DashboardAdmin: React.FC = () => {
 
   // Dock items for quick access
   const dockItems: DockItemData[] = [
-    { icon: <LayoutDashboard size={18} className="text-[#00f0ff]" />, label: 'Dashboard', onClick: () => {} },
-    { icon: <Map size={18} className="text-[#00f0ff]" />, label: 'Mapa', onClick: () => {} },
-    { icon: <Users size={18} className="text-[#00f0ff]" />, label: 'Usuarios', onClick: () => {} },
-    { icon: <Settings size={18} className="text-[#8892a4]" />, label: 'Config', onClick: () => {} },
+    { icon: <LayoutDashboard size={18} className="text-[#00f0ff]" />, label: 'Dashboard', onClick: () => navigate("/admin") },
+    { icon: <Map size={18} className="text-[#00f0ff]" />, label: 'Mapa', onClick: () => navigate("/admin/mapa") },
+    { icon: <Users size={18} className="text-[#00f0ff]" />, label: 'Usuarios', onClick: () => navigate("/admin/usuarios") },
+    { icon: <Settings size={18} className="text-[#8892a4]" />, label: 'Config', onClick: () => navigate("/admin/configuracion") },
     { icon: <LogOut size={18} className="text-[#f43f5e]" />, label: 'Salir', onClick: logout },
   ];
 
@@ -127,39 +148,39 @@ export const DashboardAdmin: React.FC = () => {
   }
 
   const statCards = [
-    { 
-      label: "Espacios Totales", 
-      value: stats?.totalSpots ?? 0, 
-      icon: Layers, 
-      color: "text-[#00f0ff] border-[#00f0ff]/20 shadow-[#00f0ff]/5", 
-      iconBg: "bg-[#00f0ff]/10 text-[#00f0ff] border-[#00f0ff]/20" 
+    {
+      label: "Espacios Totales",
+      value: stats?.totalSpots ?? 0,
+      icon: Layers,
+      color: "text-[#00f0ff] border-[#00f0ff]/20 shadow-[#00f0ff]/5",
+      iconBg: "bg-[#00f0ff]/10 text-[#00f0ff] border-[#00f0ff]/20"
     },
-    { 
-      label: "Ocupación Actual", 
-      value: `${stats?.occupancyRate ?? 0}%`, 
-      icon: Car, 
-      color: "text-[#ff6b2c] border-[#ff6b2c]/20 shadow-[#ff6b2c]/5", 
-      iconBg: "bg-[#ff6b2c]/10 text-[#ff6b2c] border-[#ff6b2c]/20" 
+    {
+      label: "Ocupación Actual",
+      value: `${stats?.occupancyRate ?? 0}%`,
+      icon: Car,
+      color: "text-[#ff6b2c] border-[#ff6b2c]/20 shadow-[#ff6b2c]/5",
+      iconBg: "bg-[#ff6b2c]/10 text-[#ff6b2c] border-[#ff6b2c]/20"
     },
-    { 
-      label: "Usuarios Activos", 
-      value: stats?.totalUsers ?? 0, 
-      icon: Users, 
-      color: "text-indigo-400 border-indigo-500/20 shadow-indigo-500/5", 
-      iconBg: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" 
+    {
+      label: "Usuarios Activos",
+      value: stats?.totalUsers ?? 0,
+      icon: Users,
+      color: "text-indigo-400 border-indigo-500/20 shadow-indigo-500/5",
+      iconBg: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
     },
-    { 
-      label: "Ingresos del Día", 
-      value: `$${(stats?.todayRevenue ?? 0).toLocaleString()}`, 
-      icon: CreditCard, 
-      color: "text-[#00f0ff] border-[#00f0ff]/20 shadow-[#00f0ff]/5", 
-      iconBg: "bg-[#00f0ff]/10 text-[#00f0ff] border-[#00f0ff]/20" 
+    {
+      label: "Ingresos del Día",
+      value: `$${(stats?.todayRevenue ?? 0).toLocaleString()}`,
+      icon: CreditCard,
+      color: "text-[#00f0ff] border-[#00f0ff]/20 shadow-[#00f0ff]/5",
+      iconBg: "bg-[#00f0ff]/10 text-[#00f0ff] border-[#00f0ff]/20"
     },
   ];
 
   return (
     <div className="min-h-screen bg-transparent text-[#e8ecf1] flex overflow-hidden font-sans">
-      
+
       {/* Sidebar Navigation */}
       <aside className="w-66 border-r border-border bg-background/80 backdrop-blur-md hidden md:flex flex-col z-20">
         <div className="h-16 flex items-center px-6 border-b border-border gap-3">
@@ -168,24 +189,36 @@ export const DashboardAdmin: React.FC = () => {
           </div>
           <span className="font-black text-base uppercase tracking-[0.2em] bg-gradient-to-r from-[#00f0ff] to-cyan-300 bg-clip-text text-transparent">Vanguard</span>
         </div>
-        
+
         <nav className="flex-1 px-4 py-6 space-y-1.5">
-          <a href="#" className="flex items-center gap-3 px-3.5 py-2.5 bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/20 font-bold text-sm shadow-[0_0_12px_rgba(0,240,255,0.08)]">
+          <button
+            onClick={() => navigate("/admin")}
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/20 font-bold text-sm shadow-[0_0_12px_rgba(0,240,255,0.08)] text-left cursor-pointer"
+          >
             <LayoutDashboard className="w-4.5 h-4.5" />
             Dashboard
-          </a>
-          <a href="#" className="flex items-center gap-3 px-3.5 py-2.5 text-[#8892a4] hover:text-[#e8ecf1] hover:bg-secondary/60 font-semibold text-sm transition duration-200">
+          </button>
+          <button
+            onClick={() => navigate("/admin/mapa")}
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 text-[#8892a4] hover:text-[#e8ecf1] hover:bg-secondary/60 font-semibold text-sm transition duration-200 text-left cursor-pointer"
+          >
             <Map className="w-4.5 h-4.5" />
             Mapa Cochera
-          </a>
-          <a href="#" className="flex items-center gap-3 px-3.5 py-2.5 text-[#8892a4] hover:text-[#e8ecf1] hover:bg-secondary/60 font-semibold text-sm transition duration-200">
+          </button>
+          <button
+            onClick={() => navigate("/admin/usuarios")}
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 text-[#8892a4] hover:text-[#e8ecf1] hover:bg-secondary/60 font-semibold text-sm transition duration-200 text-left cursor-pointer"
+          >
             <Users className="w-4.5 h-4.5" />
             Usuarios
-          </a>
-          <a href="#" className="flex items-center gap-3 px-3.5 py-2.5 text-[#8892a4] hover:text-[#e8ecf1] hover:bg-secondary/60 font-semibold text-sm transition duration-200">
+          </button>
+          <button
+            onClick={() => navigate("/admin/configuracion")}
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 text-[#8892a4] hover:text-[#e8ecf1] hover:bg-secondary/60 font-semibold text-sm transition duration-200 text-left cursor-pointer"
+          >
             <Settings className="w-4.5 h-4.5" />
             Configuración
-          </a>
+          </button>
         </nav>
 
         {/* User profile footer inside Sidebar */}
@@ -201,7 +234,7 @@ export const DashboardAdmin: React.FC = () => {
               <p className="text-[10px] text-[#8892a4] truncate mt-0.5 font-mono">{user?.email}</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={logout}
             className="w-full h-10 flex items-center justify-center gap-2 px-3 border border-rose-500/20 text-rose-400 hover:text-white hover:bg-rose-950/20 transition duration-300 text-xs font-bold"
           >
@@ -213,7 +246,7 @@ export const DashboardAdmin: React.FC = () => {
 
       {/* Main Content Pane */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden z-10 relative">
-        
+
         {/* Header bar */}
         <header className="h-16 flex items-center justify-between px-8 border-b border-border bg-background/60 backdrop-blur-md z-10">
           <div>
@@ -225,7 +258,7 @@ export const DashboardAdmin: React.FC = () => {
 
         {/* Scrollable Work Area */}
         <div className="flex-1 overflow-auto p-8 pb-24 space-y-8">
-          
+
           {/* KPI Dashboard Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {statCards.map((stat, i) => (
@@ -243,9 +276,9 @@ export const DashboardAdmin: React.FC = () => {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8">
             {/* Chart Area */}
-            <Card className="xl:col-span-2 border-border bg-card/60 backdrop-blur-md shadow-2xl">
+            <Card className="border-border bg-card/60 backdrop-blur-md shadow-2xl w-full">
               <CardHeader className="px-6 pt-5 pb-2">
                 <CardTitle className="text-base font-extrabold text-[#e8ecf1]">Ocupación y Recaudación</CardTitle>
                 <CardDescription className="text-xs text-[#8892a4] font-mono">Métricas analíticas del día en curso</CardDescription>
@@ -257,25 +290,25 @@ export const DashboardAdmin: React.FC = () => {
                       <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                         <defs>
                           <linearGradient id="colorOcupacion" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#00f0ff" stopOpacity={0.35}/>
-                            <stop offset="95%" stopColor="#00f0ff" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#00f0ff" stopOpacity={0.35} />
+                            <stop offset="95%" stopColor="#00f0ff" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#141820" vertical={false} />
                         <XAxis dataKey="time" stroke="#8892a4" fontSize={11} className="font-mono" tickLine={false} axisLine={false} />
                         <YAxis stroke="#8892a4" fontSize={11} className="font-mono" tickLine={false} axisLine={false} />
-                        <Tooltip 
+                        <Tooltip
                           contentStyle={{ backgroundColor: '#0a0c12', borderColor: '#141820', borderRadius: '0px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)' }}
                           itemStyle={{ color: '#00f0ff', fontWeight: 'bold', fontFamily: 'JetBrains Mono' }}
                           labelStyle={{ color: '#8892a4', fontSize: '11px', fontWeight: 'bold', fontFamily: 'JetBrains Mono' }}
                         />
-                        <Area 
-                          type="monotone" 
-                          dataKey="ocupacion" 
-                          stroke="#00f0ff" 
+                        <Area
+                          type="monotone"
+                          dataKey="ocupacion"
+                          stroke="#00f0ff"
                           strokeWidth={2.5}
-                          fillOpacity={1} 
-                          fill="url(#colorOcupacion)" 
+                          fillOpacity={1}
+                          fill="url(#colorOcupacion)"
                         />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -284,66 +317,6 @@ export const DashboardAdmin: React.FC = () => {
                   <div className="h-[280px] w-full mt-4 flex flex-col items-center justify-center text-[#8892a4] gap-3">
                     <ShieldCheck className="w-10 h-10 opacity-40" />
                     <span className="text-xs font-semibold font-mono uppercase tracking-widest">Sin datos de telemetría disponibles</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Garage Interactive Map Widget */}
-            <Card className="border-border bg-card/60 backdrop-blur-md shadow-2xl flex flex-col">
-              <CardHeader className="px-6 pt-5 pb-2">
-                <CardTitle className="text-base font-extrabold text-[#e8ecf1]">Mapa Satelital</CardTitle>
-                <CardDescription className="text-xs text-[#8892a4] font-mono">Visualización de cocheras en tiempo real</CardDescription>
-              </CardHeader>
-              <CardContent className="px-6 pb-5 flex-1 overflow-y-auto">
-                {floors.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-[#8892a4] text-xs gap-2 py-10">
-                    <ShieldCheck className="w-8 h-8 opacity-45" />
-                    <span>No hay plantas configuradas.</span>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {floors.map(floor => {
-                      const spots = Array.from({ length: Math.min(floor.totalSpots, 40) }, (_, i) => {
-                        return i < floor.occupiedSpots ? 'occupied' : 'free';
-                      });
-
-                      return (
-                        <div key={floor.id} className="space-y-3 p-4 bg-background/40 border border-border">
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="font-extrabold text-[#e8ecf1] uppercase tracking-[0.15em]">{floor.name}</span>
-                            <Badge className="bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/20 font-mono text-[10px] tracking-wide">
-                              {floor.occupiedSpots} / {floor.totalSpots} Slots
-                            </Badge>
-                          </div>
-                          
-                          {/* Spots visualization */}
-                          <div className="flex flex-wrap gap-1">
-                            {spots.map((status, i) => (
-                              <div 
-                                key={i}
-                                title={status === 'occupied' ? 'Ocupado' : 'Disponible'}
-                                className={`w-5 h-7 border flex items-center justify-center relative group transition duration-300 ${
-                                  status === 'occupied' 
-                                    ? 'bg-[#ff6b2c]/15 border-[#ff6b2c]/35 shadow-[inset_0_0_4px_rgba(255,107,44,0.1)]' 
-                                    : 'bg-[#00f0ff]/10 border-[#00f0ff]/25 shadow-[inset_0_0_4px_rgba(0,240,255,0.1)]'
-                                }`}
-                              >
-                                {/* Mini inner indicator dot */}
-                                <span className={`w-1 h-1 rounded-full ${
-                                  status === 'occupied' ? 'bg-[#ff6b2c]' : 'bg-[#00f0ff]'
-                                }`} />
-                              </div>
-                            ))}
-                            {floor.totalSpots > 40 && (
-                              <div className="w-5 h-7 border border-border bg-card/40 flex items-center justify-center text-[9px] font-black text-[#8892a4]">
-                                +{floor.totalSpots - 40}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
                   </div>
                 )}
               </CardContent>
@@ -389,7 +362,7 @@ export const DashboardAdmin: React.FC = () => {
                             )}
                           </div>
                         </TableCell>
-                        
+
                         {/* Location */}
                         <TableCell className="py-4 text-[#e8ecf1] text-xs font-semibold">
                           <div className="flex items-center gap-1.5">
@@ -398,20 +371,19 @@ export const DashboardAdmin: React.FC = () => {
                             <span className="text-[#00f0ff] font-bold font-mono">{entry.spot}</span>
                           </div>
                         </TableCell>
-                        
+
                         {/* Time ago */}
                         <TableCell className="py-4 text-[#8892a4] text-xs font-mono">
                           {formatTimeAgo(entry.entryAt)}
                         </TableCell>
-                        
+
                         {/* Status Badge */}
                         <TableCell className="py-4 text-right">
-                          <Badge 
-                            className={`font-semibold text-[10px] uppercase font-mono tracking-[0.15em] px-2.5 py-0.5 border ${
-                              entry.status === "ACTIVE" 
-                                ? "bg-[#ff6b2c]/10 text-[#ff6b2c] border-[#ff6b2c]/25 shadow-[0_0_8px_rgba(255,107,44,0.06)]" 
+                          <Badge
+                            className={`font-semibold text-[10px] uppercase font-mono tracking-[0.15em] px-2.5 py-0.5 border ${entry.status === "ACTIVE"
+                                ? "bg-[#ff6b2c]/10 text-[#ff6b2c] border-[#ff6b2c]/25 shadow-[0_0_8px_rgba(255,107,44,0.06)]"
                                 : "bg-secondary text-muted-foreground border-border"
-                            }`}
+                              }`}
                           >
                             {entry.status === "ACTIVE" ? "Activo" : "Salida"}
                           </Badge>

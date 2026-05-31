@@ -6,9 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import VanguardCarIcon from "@/components/ui/VanguardCarIcon";
 import BorderGlow from "@/components/ui/BorderGlow";
+import { adminService } from "../services/admin.service";
 
-// Hourly rate — will come from API eventually
-const TARIFA_HORA = 500;
 
 /**
  * Calculates billable hours based on parking rules:
@@ -45,9 +44,26 @@ function formatElapsedTime(elapsedMs: number): string {
 export const DashboardInvitado: React.FC = () => {
   const { user, logout } = useAuth();
   
+  // Tarifa por hora — fetched from admin config (fallback: 500)
+  const [tarifaHora, setTarifaHora] = useState<number>(500);
+
   // Entry time — captured when the component mounts (simulating session start)
   const [entryTime] = useState<Date>(() => new Date());
   const [elapsedMs, setElapsedMs] = useState(0);
+
+  // Fetch live hourly rate from public config endpoint
+  useEffect(() => {
+    adminService.getPublicConfigs()
+      .then((cfg) => {
+        const rate = parseFloat(cfg.rate_hourly);
+        if (!isNaN(rate) && rate > 0) {
+          setTarifaHora(rate);
+        }
+      })
+      .catch(() => {
+        // Keep fallback value on error
+      });
+  }, []);
 
   // Update elapsed time every 30 seconds for accuracy
   useEffect(() => {
@@ -62,7 +78,7 @@ export const DashboardInvitado: React.FC = () => {
   }, [entryTime]);
 
   const billableHours = calculateBillableHours(elapsedMs);
-  const totalAmount = billableHours * TARIFA_HORA;
+  const totalAmount = billableHours * tarifaHora;
   const entryTimeStr = entryTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
 
   return (
@@ -182,14 +198,14 @@ export const DashboardInvitado: React.FC = () => {
               
               {billableHours > 0 && (
                 <p className="text-xs text-[#8892a4] font-mono mt-1">
-                  {billableHours === 0.5 ? "Media hora" : `${billableHours} hora${billableHours > 1 ? "s" : ""}`} × ${TARIFA_HORA.toLocaleString()}/hora
+                  {billableHours === 0.5 ? "Media hora" : `${billableHours} hora${billableHours > 1 ? "s" : ""}`} × ${tarifaHora.toLocaleString()}/hora
                 </p>
               )}
             </div>
             
             <div className="w-full border-t border-border pt-4 flex justify-between items-center text-xs text-[#8892a4]">
               <span className="font-sans">Tarifa plana por hora</span>
-              <span className="font-mono text-[#e8ecf1]">${TARIFA_HORA.toLocaleString()}/hora</span>
+              <span className="font-mono text-[#e8ecf1]">${tarifaHora.toLocaleString()}/hora</span>
             </div>
           </CardContent>
         </Card>

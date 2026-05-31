@@ -8,16 +8,28 @@
   --animate-blob: blob 7s infinite;
 
   @keyframes blob {
-    0% { transform: translate(0px, 0px) scale(1); }
-    33% { transform: translate(30px, -50px) scale(1.1); }
-    66% { transform: translate(-20px, 20px) scale(0.9); }
-    100% { transform: translate(0px, 0px) scale(1); }
+    0% {
+      transform: translate(0px, 0px) scale(1);
+    }
+
+    33% {
+      transform: translate(30px, -50px) scale(1.1);
+    }
+
+    66% {
+      transform: translate(-20px, 20px) scale(0.9);
+    }
+
+    100% {
+      transform: translate(0px, 0px) scale(1);
+    }
   }
 }
 
 @utility animation-delay-2000 {
   animation-delay: 2s;
 }
+
 @utility animation-delay-4000 {
   animation-delay: 4s;
 }
@@ -103,7 +115,8 @@ body {
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.598 0.231 306.994);
   --chart-5: oklch(0.55 0.22 25);
-  --radius: 0rem; /* INDUSTRIAL: bordes cuadrados */
+  --radius: 0rem;
+  /* INDUSTRIAL: bordes cuadrados */
   --sidebar: oklch(0.985 0.005 240);
   --sidebar-foreground: oklch(0.145 0.015 240);
   --sidebar-primary: oklch(0.485 0.22 255);
@@ -116,27 +129,33 @@ body {
 
 /* ─── DARK THEME — Professional control room ────────────────── */
 .dark {
-  --background: #050508; /* Negro profundo original */
+  --background: #050508;
+  /* Negro profundo original */
   --foreground: #e8ecf1;
-  --card: #0a0c12; /* Card oscuro original */
+  --card: #0a0c12;
+  /* Card oscuro original */
   --card-foreground: #e8ecf1;
   --popover: #0a0c12;
   --popover-foreground: #e8ecf1;
-  --primary: #00f0ff; /* Cian eléctrico */
+  --primary: #00f0ff;
+  /* Cian eléctrico */
   --primary-foreground: #050508;
   --secondary: #111318;
   --secondary-foreground: #e8ecf1;
   --muted: #111318;
   --muted-foreground: #8892a4;
   --accent: #0a0c12;
-  --accent-foreground: #ff6b2c; /* Naranja industrial */
+  --accent-foreground: #ff6b2c;
+  /* Naranja industrial */
   --destructive: #f43f5e;
   --destructive-foreground: #ffffff;
-  --border: #141820; /* Border sutil original */
+  --border: #141820;
+  /* Border sutil original */
   --input: #141820;
   --ring: #00f0ff;
   --chart-1: #00f0ff;
-  --chart-2: #ff6b2c; /* Naranja en vez del verde genérico */
+  --chart-2: #ff6b2c;
+  /* Naranja en vez del verde genérico */
   --chart-3: #f59e0b;
   --chart-4: #a855f7;
   --chart-5: #f43f5e;
@@ -154,9 +173,11 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
   }
@@ -179,4 +200,9 @@ body {
     60px 60px;
   background-position: 0 0, 0 0, 0 0, 0 0;
   background-attachment: fixed, fixed, fixed, fixed;
+}
+
+/* Dynamically scale up all rem-based typography by 1 to 2px on the admin side */
+html.admin-active {
+  font-size: 17.5px;
 }

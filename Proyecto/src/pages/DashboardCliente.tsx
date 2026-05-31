@@ -7,6 +7,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+interface FloorSpot {
+  id: number;
+  label: string;
+  isOccupied: boolean;
+  spotType: string;
+  isOwnVehicle?: boolean;
+  vehicle: {
+    licensePlate: string;
+    brand: string | null;
+    model: string | null;
+    color: string | null;
+    entryAt: string;
+  } | null;
+}
+
 interface FloorOverview {
   id: number;
   name: string;
@@ -14,6 +29,7 @@ interface FloorOverview {
   totalSpots: number;
   occupiedSpots: number;
   availableSpots: number;
+  spots: FloorSpot[];
 }
 
 export const DashboardCliente: React.FC = () => {
@@ -25,7 +41,7 @@ export const DashboardCliente: React.FC = () => {
     async function loadMap() {
       try {
         setLoadingMap(true);
-        const floorsData = await adminService.getFloors();
+        const floorsData = await adminService.getFloorsForUser();
         setFloors(floorsData);
       } catch {
         // silently fail — will show empty state
@@ -88,7 +104,7 @@ export const DashboardCliente: React.FC = () => {
         </div>
 
         {/* Garage Map Section */}
-        <Card className="border-border bg-card/60 backdrop-blur-md shadow-2xl">
+        <Card className="border-border bg-card/60 backdrop-blur-md shadow-2xl !overflow-visible">
           <CardHeader className="px-6 pt-5 pb-2">
             <CardTitle className="text-base font-extrabold text-[#e8ecf1] flex items-center gap-2 font-sans">
               <Map className="w-4 h-4 text-[#00f0ff]" />
@@ -96,7 +112,7 @@ export const DashboardCliente: React.FC = () => {
             </CardTitle>
             <CardDescription className="text-xs text-[#8892a4] font-mono">Visualización de espacios libres y ocupados</CardDescription>
           </CardHeader>
-          <CardContent className="px-6 pb-5">
+          <CardContent className="px-6 pb-5 !overflow-visible">
             {loadingMap ? (
               <div className="h-[200px] flex items-center justify-center text-[#8892a4]">
                 <span className="text-xs font-semibold font-mono uppercase tracking-widest animate-pulse">Cargando mapa...</span>
@@ -107,14 +123,12 @@ export const DashboardCliente: React.FC = () => {
                 <span className="font-mono">No hay plantas configuradas.</span>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-6 !overflow-visible">
                 {floors.map(floor => {
-                  const spots = Array.from({ length: Math.min(floor.totalSpots, 40) }, (_, i) => {
-                    return i < floor.occupiedSpots ? 'occupied' : 'free';
-                  });
+                  const spotsList = floor.spots || [];
 
                   return (
-                    <div key={floor.id} className="space-y-3 p-4 bg-background/40 border border-border">
+                    <div key={floor.id} className="space-y-3 p-4 bg-background/40 border border-border !overflow-visible">
                       <div className="flex justify-between items-center text-xs">
                         <span className="font-extrabold text-[#e8ecf1] uppercase tracking-[0.15em] font-sans">{floor.name}</span>
                         <Badge className="bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/20 font-mono text-[10px] tracking-wide">
@@ -123,27 +137,83 @@ export const DashboardCliente: React.FC = () => {
                       </div>
                       
                       {/* Spots visualization */}
-                      <div className="flex flex-wrap gap-1">
-                        {spots.map((status, i) => (
-                          <div 
-                            key={i}
-                            title={status === 'occupied' ? 'Ocupado' : 'Disponible'}
-                            className={`w-5 h-7 border flex items-center justify-center transition duration-300 ${
-                              status === 'occupied' 
-                                ? 'bg-[#ff6b2c]/15 border-[#ff6b2c]/35 shadow-[inset_0_0_4px_rgba(255,107,44,0.1)]' 
-                                : 'bg-[#00f0ff]/10 border-[#00f0ff]/25 shadow-[inset_0_0_4px_rgba(0,240,255,0.1)]'
-                            }`}
-                          >
-                            <span className={`w-1 h-1 rounded-full ${
-                              status === 'occupied' ? 'bg-[#ff6b2c]' : 'bg-[#00f0ff]'
-                            }`} />
-                          </div>
-                        ))}
-                        {floor.totalSpots > 40 && (
-                          <div className="w-5 h-7 border border-border bg-card/40 flex items-center justify-center text-[9px] font-black text-[#8892a4]">
-                            +{floor.totalSpots - 40}
-                          </div>
-                        )}
+                      <div className="flex flex-wrap gap-2 !overflow-visible">
+                        {spotsList.map((spot) => {
+                          const isSpotOccupied = spot.isOccupied;
+
+                          return (
+                            <div 
+                              key={spot.id}
+                              className={`w-10 h-12 border flex flex-col items-center justify-between py-1.5 px-0.5 transition duration-300 select-none cursor-pointer relative group ${
+                                spot.isOwnVehicle
+                                  ? 'bg-gradient-to-b from-[#a855f7]/10 to-[#a855f7]/25 border-[#a855f7] shadow-[0_0_12px_rgba(168,85,247,0.3)] animate-pulse hover:shadow-[0_0_18px_rgba(168,85,247,0.5)]'
+                                  : isSpotOccupied 
+                                    ? 'bg-gradient-to-b from-[#ff6b2c]/5 to-[#ff6b2c]/15 border-[#ff6b2c]/30 shadow-[0_0_8px_rgba(255,107,44,0.02)]' 
+                                    : 'bg-gradient-to-b from-[#00f0ff]/5 to-[#00f0ff]/10 border-[#00f0ff]/20 shadow-[0_0_8px_rgba(0,240,255,0.01)] hover:border-[#00f0ff] hover:shadow-[0_0_12px_rgba(0,240,255,0.15)]'
+                              }`}
+                            >
+                              {/* Spot Label */}
+                              <span className={`text-[9px] font-black font-mono leading-none tracking-tight transition duration-200 ${
+                                spot.isOwnVehicle
+                                  ? 'text-[#c084fc] group-hover:text-white'
+                                  : 'text-[#8892a4] group-hover:text-white'
+                              }`}>
+                                {spot.label}
+                              </span>
+
+                              {/* Spot Type Dot */}
+                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                spot.isOwnVehicle 
+                                  ? 'bg-[#a855f7] shadow-[0_0_6px_#a855f7]'
+                                  : isSpotOccupied 
+                                    ? 'bg-[#ff6b2c] shadow-[0_0_4px_#ff6b2c]' 
+                                    : 'bg-[#00f0ff] shadow-[0_0_4px_#00f0ff]'
+                              }`} />
+
+                              {/* HUD Tooltip for OWN vehicle */}
+                              {spot.isOwnVehicle && spot.vehicle && (
+                                <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2 w-52 p-3.5 bg-[#0a0c12]/95 border border-[#a855f7] text-left opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition duration-300 z-50 shadow-[0_10px_30px_rgba(0,0,0,0.9),0_0_15px_rgba(168,85,247,0.2)] flex flex-col gap-2 backdrop-blur-md rounded-none">
+                                  <div className="flex justify-between items-center text-[8px] font-mono uppercase tracking-wider text-[#a855f7] border-b border-border/40 pb-1">
+                                    <span>Tu Cochera ({spot.label})</span>
+                                    <span className="animate-pulse font-bold">Tu Auto</span>
+                                  </div>
+
+                                  <div className="mx-auto w-fit px-2 py-0.5 border border-[#a855f7]/40 bg-[#a855f7]/5 text-[#c084fc] font-black font-mono text-[10px] tracking-widest mt-1">
+                                    {spot.vehicle.licensePlate}
+                                  </div>
+
+                                  <div className="leading-tight mt-1">
+                                    <span className="block text-[8px] text-[#8892a4] uppercase font-mono tracking-wider">Vehículo</span>
+                                    <span className="block text-xs font-bold text-[#e8ecf1] truncate">
+                                      {spot.vehicle.brand || "Desconocido"} {spot.vehicle.model || ""}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex justify-between items-center border-t border-border/30 pt-1.5 text-[8px] font-mono text-[#8892a4] mt-1">
+                                    <span>Ingreso:</span>
+                                    <span className="text-[#e8ecf1] font-bold">
+                                      {new Date(spot.vehicle.entryAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Tooltip for other occupied spots (privacy-safe) */}
+                              {isSpotOccupied && !spot.isOwnVehicle && (
+                                <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2 w-32 p-2 bg-[#0a0c12]/95 border border-[#ff6b2c]/50 text-center opacity-0 pointer-events-none group-hover:opacity-100 transition duration-300 z-50 shadow-[0_8px_20px_rgba(0,0,0,0.8)] backdrop-blur-md rounded-none text-[9px] font-mono uppercase tracking-wider text-[#ff6b2c] font-semibold">
+                                  Ocupado
+                                </div>
+                              )}
+
+                              {/* Tooltip for free spots */}
+                              {!isSpotOccupied && (
+                                <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2 w-32 p-2 bg-[#0a0c12]/95 border border-[#00f0ff]/40 text-center opacity-0 pointer-events-none group-hover:opacity-100 transition duration-300 z-50 shadow-[0_8px_20px_rgba(0,0,0,0.8)] backdrop-blur-md rounded-none text-[9px] font-mono uppercase tracking-wider text-[#00f0ff] font-semibold">
+                                  Disponible
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
