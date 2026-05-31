@@ -213,9 +213,17 @@ export const MapaAdmin: React.FC = () => {
                     
                     <CardContent className="p-6 flex-1 !overflow-visible">
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 gap-3">
-                        {spotsList.map((spot) => {
+                        {spotsList.map((spot, index) => {
                           const isSpotOccupied = spot.isOccupied;
                           const vehicle = spot.vehicle;
+
+                          const isLeftLimit = index === 0 || index === 1;
+                          const isRightLimit = index === spotsList.length - 1 || index === spotsList.length - 2;
+                          const tooltipAlignClass = isLeftLimit
+                            ? "left-0 translate-x-0"
+                            : isRightLimit
+                              ? "right-0 left-auto translate-x-0"
+                              : "left-1/2 -translate-x-1/2";
 
                           return (
                             <div
@@ -238,7 +246,7 @@ export const MapaAdmin: React.FC = () => {
 
                               {/* Glowing Tech HUD Tooltip for Occupied Slot */}
                               {isSpotOccupied && vehicle && (
-                                <div className="absolute bottom-18 left-1/2 transform -translate-x-1/2 w-60 p-4 bg-[#0a0c12]/95 border border-[#ff6b2c]/50 text-left opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition duration-300 z-50 shadow-[0_10px_35px_rgba(0,0,0,0.9),0_0_20px_rgba(255,107,44,0.25)] flex flex-col gap-2.5 backdrop-blur-md rounded-none">
+                                <div className={`absolute bottom-18 w-60 p-4 bg-[#0a0c12]/95 border border-[#ff6b2c]/50 text-left opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition duration-300 z-50 shadow-[0_10px_35px_rgba(0,0,0,0.9),0_0_20px_rgba(255,107,44,0.25)] flex flex-col gap-2.5 backdrop-blur-md rounded-none ${tooltipAlignClass}`}>
                                   {/* Header */}
                                   <div className="flex justify-between items-center text-[9px] font-mono uppercase tracking-wider text-[#ff6b2c]/70 border-b border-border/40 pb-1">
                                     <span>Cochera {spot.label}</span>
