@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminService } from "../services/admin.service";
 import {
-  Users, Car, Layers, CreditCard, Loader2, AlertCircle,
+  Users, Layers, Loader2, AlertCircle,
   LayoutDashboard, Map, Settings, LogOut
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

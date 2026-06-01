@@ -41,6 +41,18 @@ const buttonVariants = cva(
   }
 )
 
+/**
+ * Componente de botón reutilizable construido sobre Radix UI Slot y Tailwind CSS.
+ * Soporta variantes de diseño (default, outline, secondary, etc.) y tamaños usando class-variance-authority (cva).
+ * 
+ * @component
+ * @param {Object} props - Propiedades del botón.
+ * @param {string} [props.className] - Clases adicionales de CSS/Tailwind para personalizar el diseño.
+ * @param {"default" | "outline" | "secondary" | "ghost" | "destructive" | "link"} [props.variant="default"] - Variante visual del botón.
+ * @param {"default" | "xs" | "sm" | "lg" | "icon" | "icon-xs" | "icon-sm" | "icon-lg"} [props.size="default"] - Tamaño físico del botón.
+ * @param {boolean} [props.asChild=false] - Si es true, el botón renderizará su elemento hijo directamente (usando Radix Slot), útil para botones que actúan como enlaces (`<a>` o `<Link>`).
+ * @returns {JSX.Element}
+ */
 function Button({
   className,
   variant = "default",

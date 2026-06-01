@@ -10,18 +10,39 @@ interface User {
   patente?: string;
 }
 
+/**
+ * Tipo de dato que define las propiedades y métodos expuestos por el contexto de autenticación.
+ * 
+ * @interface AuthContextType
+ */
 interface AuthContextType {
+  /** El objeto de usuario autenticado o null si no hay sesión activa. */
   user: User | null;
+  /** Flag que indica si el usuario está autenticado. */
   isAuthenticated: boolean;
+  /** Función para iniciar sesión mediante correo y contraseña. */
   login: (email: string, pass: string) => Promise<void>;
+  /** Función para registrar un nuevo usuario en la plataforma. */
   register: (email: string, pass: string, name: string, phone?: string) => Promise<void>;
+  /** Función para iniciar sesión como invitado usando una patente de vehículo. */
   loginInvitado: (licensePlate: string) => Promise<void>;
+  /** Función para cerrar la sesión activa y limpiar el almacenamiento local. */
   logout: () => void;
+  /** Flag que indica si hay una operación de autenticación en progreso. */
   isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * Proveedor del contexto de autenticación. Envuelve la aplicación o las rutas protegidas
+ * para suministrar el estado de sesión y los métodos de login/registro a todos los componentes hijos.
+ * 
+ * @component
+ * @param {Object} props - Propiedades del componente.
+ * @param {ReactNode} props.children - Elementos hijos a renderizar.
+ * @returns {JSX.Element} El proveedor de contexto de React.
+ */
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(authService.getCurrentUser());
   const [isLoading, setIsLoading] = useState(false);
@@ -92,6 +113,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 };
 
+/**
+ * Hook personalizado para acceder de forma simplificada al contexto de autenticación.
+ * Debe ser utilizado dentro del componente `AuthProvider`.
+ * 
+ * @returns {AuthContextType} El estado y métodos de autenticación del usuario.
+ * @throws {Error} Si el hook se invoca fuera de un `AuthProvider`.
+ * 
+ * @example
+ * const { user, logout } = useAuth();
+ */
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

@@ -6,7 +6,7 @@ import {
   Users, Car, Loader2, AlertCircle, LayoutDashboard, Map, Settings, LogOut,
   Search, Plus, Trash2, Edit2, Shield, Calendar, Phone, Mail, Check, X
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import Dock from "@/components/ui/Dock";

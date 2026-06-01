@@ -1,7 +1,19 @@
+/**
+ * @fileoverview Componente de barra de navegación principal para Vanguard Botics.
+ * @version 1.0.0
+ */
+
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { LogOut, User } from "lucide-react";
 
+/**
+ * Componente Navbar que muestra el título de la aplicación, el usuario autenticado
+ * con su respectivo rol y el botón para cerrar la sesión actual.
+ * 
+ * @component
+ * @returns {JSX.Element} La barra de navegación superior.
+ */
 export const Navbar: React.FC = () => {
   const { logout, user } = useAuth();
   const navigate = useNavigate();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminService } from "../services/admin.service";
@@ -35,29 +35,9 @@ interface RecentSession {
   amount: number | null;
 }
 
-interface FloorSpot {
-  id: number;
-  label: string;
-  isOccupied: boolean;
-  spotType: string;
-  vehicle: {
-    licensePlate: string;
-    brand: string | null;
-    model: string | null;
-    color: string | null;
-    entryAt: string;
-  } | null;
-}
 
-interface FloorOverview {
-  id: number;
-  name: string;
-  level: number;
-  totalSpots: number;
-  occupiedSpots: number;
-  availableSpots: number;
-  spots: FloorSpot[];
-}
+
+
 
 // Chart data will come from API — no mock data
 const chartData: { time: string; ocupacion: number; recaudacion: number }[] = [];
