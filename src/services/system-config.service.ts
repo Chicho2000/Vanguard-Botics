@@ -1,4 +1,4 @@
-import { configRepository } from "../repositories/config.repository";
+import { systemConfigRepository } from "../repositories/system-config.repository";
 
 const DEFAULT_CONFIGS: Record<string, string> = {
   parking_name: "Vanguard Cochera",
@@ -16,23 +16,20 @@ const DEFAULT_CONFIGS: Record<string, string> = {
   maintenance_mode: "false",
 };
 
-export const configService = {
+export const systemConfigService = {
   async getConfigs(): Promise<Record<string, string>> {
-    const dbConfigs = await configRepository.getAll();
+    const dbConfigs = await systemConfigRepository.getAll();
     
-    // Check if we need to seed defaults (if database has no configs at all)
     const hasKeys = Object.keys(dbConfigs).length > 0;
     if (!hasKeys) {
-      await configRepository.setMany(DEFAULT_CONFIGS);
+      await systemConfigRepository.setMany(DEFAULT_CONFIGS);
       return { ...DEFAULT_CONFIGS };
     }
 
-    // Merge default configs with whatever is stored in the database
     return { ...DEFAULT_CONFIGS, ...dbConfigs };
   },
 
   async updateConfigs(configs: Record<string, string>): Promise<Record<string, string>> {
-    // Filter input to only include valid keys that we know about
     const sanitizedConfigs: Record<string, string> = {};
     for (const [key, value] of Object.entries(configs)) {
       if (key in DEFAULT_CONFIGS) {
@@ -41,7 +38,7 @@ export const configService = {
     }
 
     if (Object.keys(sanitizedConfigs).length > 0) {
-      await configRepository.setMany(sanitizedConfigs);
+      await systemConfigRepository.setMany(sanitizedConfigs);
     }
 
     return this.getConfigs();

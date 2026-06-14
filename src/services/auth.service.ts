@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { authRepository } from "../repositories/auth.repository";
+import { userRepository } from "../repositories/user.repository";
 
 const JWT_SECRET = process.env.JWT_SECRET || "default_secret_key_change_me_in_production";
 
@@ -14,14 +14,14 @@ export const authService = {
   async register(data: { email: string; password: string; name: string; phone?: string }) {
     const normalizedEmail = data.email.toLowerCase();
 
-    const existing = await authRepository.findUserByEmail(normalizedEmail);
+    const existing = await userRepository.findByEmail(normalizedEmail);
     if (existing) {
       throw { status: 409, message: "Ya existe una cuenta con este email" };
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    const user = await authRepository.createUser({
+    const user = await userRepository.create({
       email: normalizedEmail,
       password: hashedPassword,
       name: data.name,
@@ -48,7 +48,7 @@ export const authService = {
   async login(email: string, password: string) {
     const normalizedEmail = email.toLowerCase();
 
-    const user = await authRepository.findUserByEmail(normalizedEmail);
+    const user = await userRepository.findByEmail(normalizedEmail);
     if (!user) {
       throw { status: 401, message: "Credenciales incorrectas" };
     }

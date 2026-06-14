@@ -1,6 +1,6 @@
 import { prisma } from "../lib/prisma";
 
-export const configRepository = {
+export const systemConfigRepository = {
   async get(key: string): Promise<string | null> {
     const config = await prisma.systemConfig.findUnique({
       where: { key },
@@ -26,7 +26,6 @@ export const configRepository = {
   },
 
   async setMany(configs: Record<string, string>): Promise<void> {
-    // Perform bulk upserts using a transaction
     const operations = Object.entries(configs).map(([key, value]) =>
       prisma.systemConfig.upsert({
         where: { key },
@@ -37,5 +36,3 @@ export const configRepository = {
     await prisma.$transaction(operations);
   },
 };
-
-

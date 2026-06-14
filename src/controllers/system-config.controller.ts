@@ -1,20 +1,19 @@
 import { Request, Response, NextFunction } from "express";
-import { configService } from "../services/config.service";
+import { systemConfigService } from "../services/system-config.service";
 
-export const configController = {
+export const systemConfigController = {
   async getConfigs(req: Request, res: Response, next: NextFunction) {
     try {
-      const configs = await configService.getConfigs();
+      const configs = await systemConfigService.getConfigs();
       res.json({ success: true, data: configs });
     } catch (error) {
       next(error);
     }
   },
 
-  // Public endpoint — no auth required; only exposes rate fields safe for guests
   async getPublicConfigs(req: Request, res: Response, next: NextFunction) {
     try {
-      const allConfigs = await configService.getConfigs();
+      const allConfigs = await systemConfigService.getConfigs();
       const publicConfigs = {
         rate_hourly: allConfigs.rate_hourly,
         rate_daily: allConfigs.rate_daily,
@@ -38,12 +37,15 @@ export const configController = {
           message: "El cuerpo de la solicitud debe ser un objeto con configuraciones",
         });
       }
-      
-      const updatedConfigs = await configService.updateConfigs(configs);
-      res.json({ success: true, data: updatedConfigs, message: "Configuraciones actualizadas con éxito" });
+
+      const updatedConfigs = await systemConfigService.updateConfigs(configs);
+      res.json({
+        success: true,
+        data: updatedConfigs,
+        message: "Configuraciones actualizadas con éxito",
+      });
     } catch (error) {
       next(error);
     }
   },
 };
-

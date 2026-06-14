@@ -3,8 +3,15 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth";
-import usuariosRoutes from "./routes/usuarios";
-import adminRoutes from "./routes/admin";
+import usersRoutes from "./routes/users";
+import floorsRoutes from "./routes/floors";
+import systemConfigsRoutes from "./routes/system-configs";
+import statsRoutes from "./routes/stats";
+import parkingSessionsRoutes from "./routes/parking-sessions";
+import vehiclesRoutes from "./routes/vehicles";
+import parkingSpotsRoutes from "./routes/parking-spots";
+import subscriptionsRoutes from "./routes/subscriptions";
+import paymentsRoutes from "./routes/payments";
 
 const app = express();
 
@@ -18,8 +25,15 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use("/auth", authRoutes);
-app.use("/usuarios", usuariosRoutes);
-app.use("/admin", adminRoutes);
+app.use("/users", usersRoutes);
+app.use("/floors", floorsRoutes);
+app.use("/system-configs", systemConfigsRoutes);
+app.use("/stats", statsRoutes);
+app.use("/parking-sessions", parkingSessionsRoutes);
+app.use("/vehicles", vehiclesRoutes);
+app.use("/parking-spots", parkingSpotsRoutes);
+app.use("/subscriptions", subscriptionsRoutes);
+app.use("/payments", paymentsRoutes);
 
 // Catch all error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

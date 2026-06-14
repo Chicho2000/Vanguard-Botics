@@ -24,32 +24,32 @@ async function fetchWithAuth(url: string, options?: RequestInit) {
 
 export const adminService = {
   async getStats() {
-    const { data } = await fetchWithAuth(`${API_URL}/admin/stats`);
+    const { data } = await fetchWithAuth(`${API_URL}/stats`);
     return data;
   },
 
   async getRecentActivity() {
-    const { data } = await fetchWithAuth(`${API_URL}/admin/activity`);
+    const { data } = await fetchWithAuth(`${API_URL}/parking-sessions/activity`);
     return data;
   },
 
   async getFloors() {
-    const { data } = await fetchWithAuth(`${API_URL}/admin/floors`);
+    const { data } = await fetchWithAuth(`${API_URL}/floors`);
     return data;
   },
 
   async getFloorsForUser() {
-    const { data } = await fetchWithAuth(`${API_URL}/usuarios/floors`);
+    const { data } = await fetchWithAuth(`${API_URL}/floors/user-overview`);
     return data;
   },
 
   async getConfigs() {
-    const { data } = await fetchWithAuth(`${API_URL}/admin/config`);
+    const { data } = await fetchWithAuth(`${API_URL}/system-configs`);
     return data;
   },
 
   async getPublicConfigs() {
-    const response = await fetch(`${API_URL}/admin/config/public`);
+    const response = await fetch(`${API_URL}/system-configs/public`);
     const data = await response.json();
     if (!response.ok) {
       throw new Error(data.message || "Error al obtener datos públicos");
@@ -58,7 +58,7 @@ export const adminService = {
   },
 
   async updateConfigs(configs: Record<string, string>) {
-    const { data } = await fetchWithAuth(`${API_URL}/admin/config`, {
+    const { data } = await fetchWithAuth(`${API_URL}/system-configs`, {
       method: "PUT",
       body: JSON.stringify(configs),
     });
@@ -66,12 +66,12 @@ export const adminService = {
   },
 
   async getUsers() {
-    const { data } = await fetchWithAuth(`${API_URL}/usuarios`);
+    const { data } = await fetchWithAuth(`${API_URL}/users`);
     return data;
   },
 
   async createUser(user: any) {
-    const { data } = await fetchWithAuth(`${API_URL}/usuarios`, {
+    const { data } = await fetchWithAuth(`${API_URL}/users`, {
       method: "POST",
       body: JSON.stringify(user),
     });
@@ -79,7 +79,7 @@ export const adminService = {
   },
 
   async updateUser(id: number, user: any) {
-    const { data } = await fetchWithAuth(`${API_URL}/usuarios/${id}`, {
+    const { data } = await fetchWithAuth(`${API_URL}/users/${id}`, {
       method: "PATCH",
       body: JSON.stringify(user),
     });
@@ -87,7 +87,7 @@ export const adminService = {
   },
 
   async deleteUser(id: number) {
-    const { data } = await fetchWithAuth(`${API_URL}/usuarios/${id}`, {
+    const { data } = await fetchWithAuth(`${API_URL}/users/${id}`, {
       method: "DELETE",
     });
     return data;
