@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminService } from "../services/admin.service";
 import { 
-  Users, Car, CreditCard, Loader2, AlertCircle, 
+  Users, CreditCard, Loader2, AlertCircle, 
   LayoutDashboard, Map, Settings, LogOut,
   Save, Check, Info, Sliders, Cpu
 } from "lucide-react";
+import VanguardCarIcon from "../components/ui/VanguardCarIcon";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Dock from "@/components/ui/Dock";
@@ -103,7 +104,7 @@ export const ConfiguracionAdmin: React.FC = () => {
       <aside className="w-66 border-r border-border bg-background/80 backdrop-blur-md hidden md:flex flex-col z-20">
         <div className="h-16 flex items-center px-6 border-b border-border gap-3">
           <div className="bg-[#00f0ff]/10 border border-[#00f0ff]/20 p-2 shadow-[0_0_8px_rgba(0,240,255,0.2)]">
-            <Car className="w-5 h-5 text-[#00f0ff] drop-shadow-[0_0_4px_rgba(0,240,255,0.4)]" />
+            <VanguardCarIcon className="text-[#00f0ff] drop-shadow-[0_0_4px_rgba(0,240,255,0.4)]" size={20} />
           </div>
           <span className="font-black text-base uppercase tracking-[0.2em] bg-gradient-to-r from-[#00f0ff] to-cyan-300 bg-clip-text text-transparent">Vanguard</span>
         </div>
@@ -354,6 +355,22 @@ export const ConfiguracionAdmin: React.FC = () => {
                         />
                       </div>
                       <p className="text-xs text-[#8892a4] font-mono">Abono mensual estándar para cocheras fijas de clientes registrados.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-[#8892a4] uppercase tracking-wider font-mono">Precio Abono Trimestral</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-[#00f0ff] font-mono">$</span>
+                        <input 
+                          type="number"
+                          value={configs.rate_quarterly || ""}
+                          onChange={(e) => handleChange("rate_quarterly", e.target.value)}
+                          className="w-full h-11 pl-8 pr-4 bg-[#0a0c12]/40 border border-border text-[#e8ecf1] font-bold text-sm transition duration-300 focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff]/30 outline-none font-mono"
+                          required
+                          min="0"
+                        />
+                      </div>
+                      <p className="text-xs text-[#8892a4] font-mono">Abono trimestral estándar (cada 3 meses) para clientes registrados.</p>
                     </div>
 
                     <div className="space-y-2">

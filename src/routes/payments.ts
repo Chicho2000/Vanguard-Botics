@@ -1,14 +1,14 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireAdmin } from "../middleware/auth";
+import { paymentController } from "../controllers/payment.controller";
 
 const router = Router();
 
 // Protect all routes
 router.use(requireAuth);
 
-// Basic placeholder GET route
-router.get("/", (req, res) => {
-  res.json({ success: true, message: "Payments route active" });
-});
+router.get("/", requireAdmin, paymentController.getPayments);
+router.get("/revenue/today", requireAdmin, paymentController.getTodayRevenue);
+router.get("/:id", requireAdmin, paymentController.getPaymentById);
 
 export default router;

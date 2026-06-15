@@ -2,7 +2,8 @@
 // Schema de base de datos para sistema de estacionamiento inteligente
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -137,6 +138,7 @@ enum SubscriptionType {
   HOURS
   DAILY
   MONTHLY
+  QUARTERLY
   YEARLY
 }
 

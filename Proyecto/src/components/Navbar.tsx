@@ -6,6 +6,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { LogOut, User } from "lucide-react";
+import VanguardCarIcon from "./ui/VanguardCarIcon";
 
 /**
  * Componente Navbar que muestra el título de la aplicación, el usuario autenticado
@@ -33,8 +34,8 @@ export const Navbar: React.FC = () => {
     <nav className="bg-background/80 backdrop-blur-xl border-b border-border">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-gradient-to-tr from-[#00f0ff] to-[#0089C5] p-2">
-            <span className="text-white font-bold text-lg font-mono">VB</span>
+          <div className="bg-[#00f0ff]/10 border border-[#00f0ff]/20 p-2 shadow-[0_0_8px_rgba(0,240,255,0.2)]">
+            <VanguardCarIcon className="text-[#00f0ff] drop-shadow-[0_0_4px_rgba(0,240,255,0.4)]" size={20} />
           </div>
           <div>
             <h1 className="text-white font-bold text-lg leading-tight tracking-wider uppercase">Vanguard Botics</h1>

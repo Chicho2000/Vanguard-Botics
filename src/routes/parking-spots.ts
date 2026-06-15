@@ -1,14 +1,16 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireAdmin } from "../middleware/auth";
+import { parkingSpotController } from "../controllers/parking-spot.controller";
 
 const router = Router();
 
 // Protect all routes
 router.use(requireAuth);
 
-// Basic placeholder GET route
-router.get("/", (req, res) => {
-  res.json({ success: true, message: "Parking spots route active" });
-});
+router.get("/", parkingSpotController.getSpots);
+router.get("/stats", parkingSpotController.getOccupancyStats);
+router.get("/floor/:floorId", parkingSpotController.getSpotsByFloor);
+router.get("/:id", parkingSpotController.getSpotById);
+router.patch("/:id", requireAdmin, parkingSpotController.updateSpot);
 
 export default router;

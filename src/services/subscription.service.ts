@@ -1,21 +1,9 @@
-import { Router } from "express";
-import { requireAuth, AuthRequest } from "../middleware/auth";
+import { subscriptionRepository } from "../repositories/subscription.repository";
+import { systemConfigService } from "./system-config.service";
 import { prisma } from "../lib/prisma";
-import { systemConfigService } from "../services/system-config.service";
 
-const router = Router();
-
-// Protect all routes
-router.use(requireAuth);
-
-// Get user's active subscription (auto-creates default DAILY if none exists)
-router.get("/active", async (req: AuthRequest, res) => {
-  try {
-    const userId = req.user?.userId;
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "No autenticado" });
-    }
-
+export const subscriptionService = {
+  async getActiveSubscription(userId: number) {
     let activeSub = await prisma.subscription.findFirst({
       where: {
         userId,
@@ -26,7 +14,7 @@ router.get("/active", async (req: AuthRequest, res) => {
       },
     });
 
-    // If an active subscription has expired, update it
+    // Si el abono activo ya expiró, marcarlo como expirado
     if (activeSub && new Date(activeSub.validUntil) < new Date()) {
       await prisma.subscription.update({
         where: { id: activeSub.id },
@@ -35,10 +23,10 @@ router.get("/active", async (req: AuthRequest, res) => {
       activeSub = null;
     }
 
-    // If no active subscription exists, automatically create a default DAILY subscription
+    // Si no hay abono activo, crear uno DAILY por defecto
     if (!activeSub) {
       const now = new Date();
-      const until = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+      const until = new Date(now.getTime() + 24 * 60 * 60 * 1000);
       activeSub = await prisma.subscription.create({
         data: {
           userId,
@@ -63,27 +51,11 @@ router.get("/active", async (req: AuthRequest, res) => {
       });
     }
 
-    return res.json({ success: true, data: activeSub });
-  } catch (error) {
-    console.error("Error fetching active subscription:", error);
-    return res.status(500).json({ success: false, message: "Error al obtener abono activo" });
-  }
-});
+    return activeSub;
+  },
 
-// Change/Update subscription plan for the registered user
-router.post("/change-plan", async (req: AuthRequest, res) => {
-  try {
-    const userId = req.user?.userId;
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "No autenticado" });
-    }
-
-    const { type } = req.body;
-    if (!type || !["DAILY", "MONTHLY", "QUARTERLY", "YEARLY"].includes(type)) {
-      return res.status(400).json({ success: false, message: "Tipo de plan de pago inválido" });
-    }
-
-    // Cancel any currently active subscriptions for the user
+  async changePlan(userId: number, type: "DAILY" | "MONTHLY" | "QUARTERLY" | "YEARLY") {
+    // Cancelar abonos activos existentes
     await prisma.subscription.updateMany({
       where: {
         userId,
@@ -106,7 +78,7 @@ router.post("/change-plan", async (req: AuthRequest, res) => {
       until.setFullYear(now.getFullYear() + 1);
     }
 
-    // Create the new subscription
+    // Crear nueva suscripción
     const newSub = await prisma.subscription.create({
       data: {
         userId,
@@ -117,7 +89,7 @@ router.post("/change-plan", async (req: AuthRequest, res) => {
       },
     });
 
-    // Get pricing from system configurations
+    // Obtener tarifa del sistema y crear pago asociado
     const systemConfigs = await systemConfigService.getConfigs();
     let rateKey = "rate_daily";
     if (type === "DAILY") rateKey = "rate_daily";
@@ -127,7 +99,6 @@ router.post("/change-plan", async (req: AuthRequest, res) => {
 
     const amount = parseFloat(systemConfigs[rateKey] || "0");
 
-    // Create the associated approved payment
     await prisma.payment.create({
       data: {
         subscriptionId: newSub.id,
@@ -138,11 +109,14 @@ router.post("/change-plan", async (req: AuthRequest, res) => {
       },
     });
 
-    return res.json({ success: true, message: "Plan de pago cambiado con éxito", data: newSub });
-  } catch (error) {
-    console.error("Error changing subscription plan:", error);
-    return res.status(500).json({ success: false, message: "Error al cambiar el plan de pago" });
-  }
-});
+    return newSub;
+  },
 
-export default router;
+  async getSubscriptionsByUserId(userId: number) {
+    return await subscriptionRepository.findByUserId(userId);
+  },
+
+  async getSubscriptionById(id: number) {
+    return await subscriptionRepository.findById(id);
+  },
+};

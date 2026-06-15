@@ -1,4 +1,3 @@
-// Prisma client singleton — con adapter para compatibilidad con el servidor
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -8,6 +7,7 @@ console.log("Prisma Client inicializado. DATABASE_URL:", process.env.DATABASE_UR
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: false,
 });
 const adapter = new PrismaPg(pool);
 

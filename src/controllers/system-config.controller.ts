@@ -18,6 +18,7 @@ export const systemConfigController = {
         rate_hourly: allConfigs.rate_hourly,
         rate_daily: allConfigs.rate_daily,
         rate_monthly: allConfigs.rate_monthly,
+        rate_quarterly: allConfigs.rate_quarterly,
         rate_yearly: allConfigs.rate_yearly,
         parking_name: allConfigs.parking_name,
         welcome_message: allConfigs.welcome_message,

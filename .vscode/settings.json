@@ -4,7 +4,7 @@
   },
   "javascript.suggest.completeFunctionCalls": true,
   "editor.parameterHints.enabled": true,
-  "editor.hover.enabled": true,
+  "editor.hover.enabled": "on",
   "tailwindCSS.includeLanguages": {
     "javascript": "javascript",
     "javascriptreact": "javascriptreact",

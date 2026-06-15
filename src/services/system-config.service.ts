@@ -7,6 +7,7 @@ const DEFAULT_CONFIGS: Record<string, string> = {
   rate_hourly: "500",
   rate_daily: "3000",
   rate_monthly: "45000",
+  rate_quarterly: "120000",
   rate_yearly: "390000",
   limit_max_height: "240",
   limit_max_width: "220",

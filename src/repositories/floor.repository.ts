@@ -10,6 +10,8 @@ export const floorRepository = {
             label: true,
             isOccupied: true,
             spotType: true,
+            row: true,
+            column: true,
             sessions: {
               where: { status: "ACTIVE" },
               take: 1,

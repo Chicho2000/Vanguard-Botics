@@ -15,6 +15,10 @@ const registerSchema = z.object({
   password: z.string().min(6, "Contraseña mínima 6 caracteres"),
   name: z.string().min(2, "Nombre mínimo 2 caracteres"),
   phone: z.string().optional(),
+  patente: z.string().min(6, "Patente mínima 6 caracteres"),
+  brand: z.string().optional(),
+  model: z.string().optional(),
+  color: z.string().optional(),
 });
 
 // ─── REGISTRO DE NUEVO USUARIO ───────────────────────────────

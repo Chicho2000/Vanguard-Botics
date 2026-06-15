@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminService } from "../services/admin.service";
 import {
-  Users, Car, Layers, CreditCard, Loader2, AlertCircle,
+  Users, Layers, CreditCard, Loader2, AlertCircle,
   LayoutDashboard, Map, Settings, LogOut, ShieldCheck
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -138,7 +138,7 @@ export const DashboardAdmin: React.FC = () => {
     {
       label: "Ocupación Actual",
       value: `${stats?.occupancyRate ?? 0}%`,
-      icon: Car,
+      icon: VanguardCarIcon,
       color: "text-[#ff6b2c] border-[#ff6b2c]/20 shadow-[#ff6b2c]/5",
       iconBg: "bg-[#ff6b2c]/10 text-[#ff6b2c] border-[#ff6b2c]/20"
     },
@@ -312,7 +312,7 @@ export const DashboardAdmin: React.FC = () => {
             <CardContent className="px-6 pb-6">
               {activity.length === 0 ? (
                 <div className="text-center py-16">
-                  <Car className="w-12 h-12 text-border mx-auto mb-3 animate-pulse" />
+                  <VanguardCarIcon className="text-border mx-auto mb-3 animate-pulse" size={48} />
                   <p className="text-sm font-semibold text-[#8892a4]">Sin telemetría de barreras registrada.</p>
                 </div>
               ) : (

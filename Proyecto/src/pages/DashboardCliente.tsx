@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Navbar } from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
 import { adminService } from "../services/admin.service";
-import { Clock, CreditCard, LogOut, ShieldCheck, Zap, Map, Layers, Timer, Tag } from "lucide-react";
+import { subscriptionService } from "../services/subscription.service";
+import { Clock, CreditCard, LogOut, ShieldCheck, Zap, Map, Layers, Tag, Loader2, AlertCircle, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,12 @@ export const DashboardCliente: React.FC = () => {
   const [floors, setFloors] = useState<FloorOverview[]>([]);
   const [loadingMap, setLoadingMap] = useState(true);
 
+  const [activeSub, setActiveSub] = useState<any>(null);
+  const [publicConfigs, setPublicConfigs] = useState<Record<string, string>>({});
+  const [loadingSub, setLoadingSub] = useState(true);
+  const [changingPlan, setChangingPlan] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   useEffect(() => {
     async function loadMap() {
       try {
@@ -52,12 +59,71 @@ export const DashboardCliente: React.FC = () => {
     loadMap();
   }, []);
 
-  // Subscription offer plans
+  useEffect(() => {
+    async function loadSubscription() {
+      try {
+        setLoadingSub(true);
+        const sub = await subscriptionService.getActiveSubscription();
+        setActiveSub(sub);
+      } catch (error) {
+        console.error("Error loading subscription:", error);
+      } finally {
+        setLoadingSub(false);
+      }
+    }
+    async function loadConfigs() {
+      try {
+        const configs = await adminService.getPublicConfigs();
+        setPublicConfigs(configs);
+      } catch (error) {
+        console.error("Error loading public configs:", error);
+      }
+    }
+    loadSubscription();
+    loadConfigs();
+  }, []);
+
+  const handlePlanChange = async (planType: "DAILY" | "MONTHLY" | "QUARTERLY" | "YEARLY") => {
+    try {
+      setChangingPlan(planType);
+      setMessage(null);
+      const updated = await subscriptionService.changePlan(planType);
+      setActiveSub(updated);
+      setMessage({ type: "success", text: `¡Plan cambiado a ${getPlanLabel(planType)} con éxito!` });
+      setTimeout(() => setMessage(null), 5000);
+    } catch (error: any) {
+      setMessage({ type: "error", text: error.message || "Error al cambiar el plan." });
+    } finally {
+      setChangingPlan(null);
+    }
+  };
+
+  const getPlanLabel = (type: string) => {
+    switch (type) {
+      case "DAILY": return "Diario";
+      case "MONTHLY": return "Mensual";
+      case "QUARTERLY": return "Trimestral";
+      case "YEARLY": return "Anual";
+      default: return type;
+    }
+  };
+
+  const getPlanCost = (type: string) => {
+    if (!publicConfigs) return "—";
+    switch (type) {
+      case "DAILY": return `$${publicConfigs.rate_daily || "3000"}`;
+      case "MONTHLY": return `$${publicConfigs.rate_monthly || "45000"}`;
+      case "QUARTERLY": return `$${publicConfigs.rate_quarterly || "120000"}`;
+      case "YEARLY": return `$${publicConfigs.rate_yearly || "390000"}`;
+      default: return "—";
+    }
+  };
+
   const offers = [
-    { label: "Por Hora", price: "—", icon: Timer, color: "text-[#00f0ff]", borderColor: "border-[#00f0ff]/20", bgColor: "bg-[#00f0ff]/10" },
-    { label: "Diario", price: "—", icon: Clock, color: "text-[#ff6b2c]", borderColor: "border-[#ff6b2c]/20", bgColor: "bg-[#ff6b2c]/10" },
-    { label: "Semanal", price: "—", icon: Tag, color: "text-indigo-400", borderColor: "border-indigo-500/20", bgColor: "bg-indigo-500/10" },
-    { label: "Trimestral", price: "—", icon: CreditCard, color: "text-amber-400", borderColor: "border-amber-500/20", bgColor: "bg-amber-500/10" },
+    { type: "DAILY" as const, label: "Diario", price: publicConfigs.rate_daily ? `$${publicConfigs.rate_daily}` : "—", icon: Clock, color: "text-[#ff6b2c]", borderColor: "border-[#ff6b2c]/20", bgColor: "bg-[#ff6b2c]/10" },
+    { type: "MONTHLY" as const, label: "Mensual", price: publicConfigs.rate_monthly ? `$${publicConfigs.rate_monthly}` : "—", icon: Tag, color: "text-indigo-400", borderColor: "border-indigo-500/20", bgColor: "bg-indigo-500/10" },
+    { type: "QUARTERLY" as const, label: "Trimestral", price: publicConfigs.rate_quarterly ? `$${publicConfigs.rate_quarterly}` : "—", icon: CreditCard, color: "text-amber-400", borderColor: "border-amber-500/20", bgColor: "bg-amber-500/10" },
+    { type: "YEARLY" as const, label: "Anual", price: publicConfigs.rate_yearly ? `$${publicConfigs.rate_yearly}` : "—", icon: Zap, color: "text-emerald-400", borderColor: "border-emerald-500/20", bgColor: "bg-emerald-500/10" },
   ];
 
   return (
@@ -65,7 +131,7 @@ export const DashboardCliente: React.FC = () => {
       <Navbar />
 
       <main className="flex-1 max-w-4xl mx-auto w-full px-5 py-8 flex flex-col gap-8 z-10">
-        
+
         {/* Welcome Header */}
         <div className="space-y-2 mt-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#00f0ff]/10 border border-[#00f0ff]/25 text-[11px] font-semibold text-[#00f0ff] uppercase tracking-[0.2em] mb-1 shadow-sm font-mono">
@@ -87,7 +153,18 @@ export const DashboardCliente: React.FC = () => {
                 <Clock className="w-6 h-6 text-[#00f0ff]" />
               </div>
               <p className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.2em] font-mono">Estancia Activa</p>
-              <p className="font-mono font-black text-lg text-[#00f0ff]">24hs</p>
+              <p className="font-mono font-black text-lg text-[#00f0ff]">
+                {loadingSub ? "..." : activeSub ? (() => {
+                  const now = new Date();
+                  const until = new Date(activeSub.validUntil);
+                  const diffMs = until.getTime() - now.getTime();
+                  if (diffMs <= 0) return "Expirado";
+                  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                  const diffDays = Math.floor(diffHours / 24);
+                  if (diffDays > 0) return `${diffDays}d ${diffHours % 24}h`;
+                  return `${diffHours}h`;
+                })() : "Sin abono"}
+              </p>
             </CardContent>
           </Card>
 
@@ -135,40 +212,37 @@ export const DashboardCliente: React.FC = () => {
                           {floor.availableSpots} / {floor.totalSpots} Libres
                         </Badge>
                       </div>
-                      
+
                       {/* Spots visualization */}
                       <div className="flex flex-wrap gap-2 !overflow-visible">
                         {spotsList.map((spot) => {
                           const isSpotOccupied = spot.isOccupied;
 
                           return (
-                            <div 
+                            <div
                               key={spot.id}
-                              className={`w-10 h-12 border flex flex-col items-center justify-between py-1.5 px-0.5 transition duration-300 select-none cursor-pointer relative group ${
-                                spot.isOwnVehicle
-                                  ? 'bg-gradient-to-b from-[#a855f7]/10 to-[#a855f7]/25 border-[#a855f7] shadow-[0_0_12px_rgba(168,85,247,0.3)] animate-pulse hover:shadow-[0_0_18px_rgba(168,85,247,0.5)]'
-                                  : isSpotOccupied 
-                                    ? 'bg-gradient-to-b from-[#ff6b2c]/5 to-[#ff6b2c]/15 border-[#ff6b2c]/30 shadow-[0_0_8px_rgba(255,107,44,0.02)]' 
-                                    : 'bg-gradient-to-b from-[#00f0ff]/5 to-[#00f0ff]/10 border-[#00f0ff]/20 shadow-[0_0_8px_rgba(0,240,255,0.01)] hover:border-[#00f0ff] hover:shadow-[0_0_12px_rgba(0,240,255,0.15)]'
-                              }`}
+                              className={`w-10 h-12 border flex flex-col items-center justify-between py-1.5 px-0.5 transition duration-300 select-none cursor-pointer relative group ${spot.isOwnVehicle
+                                ? 'bg-gradient-to-b from-[#a855f7]/10 to-[#a855f7]/25 border-[#a855f7] shadow-[0_0_12px_rgba(168,85,247,0.3)] animate-pulse hover:shadow-[0_0_18px_rgba(168,85,247,0.5)]'
+                                : isSpotOccupied
+                                  ? 'bg-gradient-to-b from-[#ff6b2c]/5 to-[#ff6b2c]/15 border-[#ff6b2c]/30 shadow-[0_0_8px_rgba(255,107,44,0.02)]'
+                                  : 'bg-gradient-to-b from-[#00f0ff]/5 to-[#00f0ff]/10 border-[#00f0ff]/20 shadow-[0_0_8px_rgba(0,240,255,0.01)] hover:border-[#00f0ff] hover:shadow-[0_0_12px_rgba(0,240,255,0.15)]'
+                                }`}
                             >
                               {/* Spot Label */}
-                              <span className={`text-[9px] font-black font-mono leading-none tracking-tight transition duration-200 ${
-                                spot.isOwnVehicle
-                                  ? 'text-[#c084fc] group-hover:text-white'
-                                  : 'text-[#8892a4] group-hover:text-white'
-                              }`}>
+                              <span className={`text-[9px] font-black font-mono leading-none tracking-tight transition duration-200 ${spot.isOwnVehicle
+                                ? 'text-[#c084fc] group-hover:text-white'
+                                : 'text-[#8892a4] group-hover:text-white'
+                                }`}>
                                 {spot.label}
                               </span>
 
                               {/* Spot Type Dot */}
-                              <span className={`w-1.5 h-1.5 rounded-full ${
-                                spot.isOwnVehicle 
-                                  ? 'bg-[#a855f7] shadow-[0_0_6px_#a855f7]'
-                                  : isSpotOccupied 
-                                    ? 'bg-[#ff6b2c] shadow-[0_0_4px_#ff6b2c]' 
-                                    : 'bg-[#00f0ff] shadow-[0_0_4px_#00f0ff]'
-                              }`} />
+                              <span className={`w-1.5 h-1.5 rounded-full ${spot.isOwnVehicle
+                                ? 'bg-[#a855f7] shadow-[0_0_6px_#a855f7]'
+                                : isSpotOccupied
+                                  ? 'bg-[#ff6b2c] shadow-[0_0_4px_#ff6b2c]'
+                                  : 'bg-[#00f0ff] shadow-[0_0_4px_#00f0ff]'
+                                }`} />
 
                               {/* HUD Tooltip for OWN vehicle */}
                               {spot.isOwnVehicle && spot.vehicle && (
@@ -230,52 +304,123 @@ export const DashboardCliente: React.FC = () => {
               <div className="p-1.5 bg-indigo-500/15 border border-indigo-500/20">
                 <CreditCard className="w-4 h-4 text-indigo-400" />
               </div>
-              Abono Mensual
+              Plan de Abono / Suscripción
             </CardTitle>
           </CardHeader>
           <CardContent className="px-6 pb-6 space-y-5">
-            {/* Subscription Info */}
-            <div className="p-4 bg-background/50 border border-border space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Fecha de Suscripción</span>
-                <span className="text-sm font-bold text-[#e8ecf1] font-mono">—</span>
+            {/* Feedback Message Alert */}
+            {message && (
+              <div className={`flex items-center gap-3 p-3.5 border text-xs font-semibold font-mono ${message.type === "success"
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                : "bg-rose-500/10 border-rose-500/30 text-rose-400"
+                }`}>
+                {message.type === "success" ? <Check className="w-4 h-4 text-emerald-400" /> : <AlertCircle className="w-4 h-4 text-rose-400" />}
+                <span>{message.text}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Costo Próximo Mes</span>
-                <span className="text-sm font-bold text-[#e8ecf1] font-mono">—</span>
+            )}
+
+            {loadingSub ? (
+              <div className="h-[140px] flex items-center justify-center text-[#8892a4]">
+                <Loader2 className="w-6 h-6 animate-spin text-indigo-400 mr-2" />
+                <span className="text-xs font-semibold font-mono uppercase tracking-widest animate-pulse">Obteniendo Abono...</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Vencimiento</span>
-                <span className="text-sm font-bold text-[#e8ecf1] font-mono">—</span>
+            ) : activeSub ? (
+              /* Subscription Info */
+              <div className="p-4 bg-background/50 border border-border space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Plan de Pago Actual</span>
+                  <Badge className="bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/20 font-mono text-[10px] tracking-wide font-bold uppercase">
+                    Abono {getPlanLabel(activeSub.type)}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Fecha de Inicio</span>
+                  <span className="text-sm font-bold text-[#e8ecf1] font-mono">
+                    {new Date(activeSub.validFrom).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Costo del Plan</span>
+                  <span className="text-sm font-black text-[#00f0ff] font-mono">{getPlanCost(activeSub.type)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Fecha de Vencimiento</span>
+                  <span className="text-sm font-bold text-[#e8ecf1] font-mono">
+                    {new Date(activeSub.validUntil).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <span className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Estado del Abono</span>
+                  <Badge className={`font-mono text-[10px] tracking-wide font-bold uppercase ${activeSub.status === "ACTIVE"
+                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25"
+                    : "bg-rose-500/10 text-rose-400 border border-rose-500/25"
+                    }`}>
+                    {activeSub.status === "ACTIVE" ? "Activo" : activeSub.status}
+                  </Badge>
+                </div>
               </div>
-              <div className="flex items-center justify-between pt-2 border-t border-border">
-                <span className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Estancia</span>
-                <Badge className="bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/20 font-mono text-[10px] tracking-wide">
-                  Activa 24hs
-                </Badge>
+            ) : (
+              <div className="p-4 bg-background/50 border border-border text-center text-[#8892a4] text-xs font-mono">
+                No se encontró un abono activo.
               </div>
-            </div>
+            )}
 
             {/* Subscription Offers */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold text-[#8892a4] uppercase tracking-[0.15em] font-sans">Otras Ofertas de Suscripción</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {offers.map((offer, i) => (
-                  <div key={i} className={`p-3 border ${offer.borderColor} ${offer.bgColor} bg-opacity-5 flex flex-col items-center gap-2 text-center transition duration-300 hover:scale-[1.02]`}>
-                    <offer.icon className={`w-5 h-5 ${offer.color}`} />
-                    <span className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">{offer.label}</span>
-                    <span className={`text-lg font-black font-mono ${offer.color}`}>{offer.price}</span>
-                  </div>
-                ))}
+            <div className="space-y-3 pt-2">
+              <h4 className="text-xs font-bold text-[#8892a4] uppercase tracking-[0.15em] font-sans">Cambiar / Elegir otro Plan</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {offers.map((offer, i) => {
+                  const isActive = activeSub && activeSub.type === offer.type;
+                  const isChangingThis = changingPlan === offer.type;
+
+                  return (
+                    <div
+                      key={i}
+                      className={`p-4 border flex flex-col justify-between items-center gap-3 text-center transition duration-300 relative rounded-none ${isActive
+                        ? "border-[#00f0ff] bg-[#00f0ff]/5 shadow-[0_0_12px_rgba(0,240,255,0.1)]"
+                        : `${offer.borderColor} ${offer.bgColor} bg-opacity-5 hover:scale-[1.01]`
+                        }`}
+                    >
+                      {isActive && (
+                        <span className="absolute -top-2 px-2 py-0.5 bg-[#00f0ff] text-background text-[8px] font-mono font-black uppercase tracking-wider">
+                          Activo
+                        </span>
+                      )}
+
+                      <div className="flex flex-col items-center gap-2">
+                        <offer.icon className={`w-5 h-5 ${isActive ? "text-[#00f0ff]" : offer.color}`} />
+                        <span className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">{offer.label}</span>
+                        <span className={`text-lg font-black font-mono ${isActive ? "text-[#00f0ff]" : offer.color}`}>
+                          {offer.price}
+                        </span>
+                      </div>
+
+                      {!isActive && (
+                        <Button
+                          size="sm"
+                          onClick={() => handlePlanChange(offer.type)}
+                          disabled={changingPlan !== null}
+                          className="w-full h-8 bg-transparent hover:bg-white/5 text-xs text-[#e8ecf1] border border-border/80 rounded-none mt-2 font-mono"
+                        >
+                          {isChangingThis ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            "Activar"
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Sign Out Action */}
-        <Button 
-          variant="ghost" 
-          onClick={logout} 
+        <Button
+          variant="ghost"
+          onClick={logout}
           className="text-rose-400/90 hover:text-rose-300 hover:bg-rose-950/15 mx-auto mt-4 transition duration-300 font-semibold flex items-center gap-2 text-xs font-sans"
         >
           <LogOut className="w-4 h-4" />

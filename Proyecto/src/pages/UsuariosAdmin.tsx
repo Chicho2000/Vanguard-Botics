@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminService } from "../services/admin.service";
 import {
-  Users, Car, Loader2, AlertCircle, LayoutDashboard, Map, Settings, LogOut,
+  Users, Loader2, AlertCircle, LayoutDashboard, Map, Settings, LogOut,
   Search, Plus, Trash2, Edit2, Shield, Calendar, Phone, Mail, Check, X
 } from "lucide-react";
+import VanguardCarIcon from "../components/ui/VanguardCarIcon";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,12 @@ interface UserItem {
   phone: string | null;
   role: "ADMIN" | "CLIENTE" | "INVITADO";
   createdAt: string;
+  vehicles?: {
+    licensePlate: string;
+    brand: string | null;
+    model: string | null;
+    color: string | null;
+  }[];
 }
 
 export const UsuariosAdmin: React.FC = () => {
@@ -45,6 +52,10 @@ export const UsuariosAdmin: React.FC = () => {
   const [formPassword, setFormPassword] = useState("");
   const [formPhone, setFormPhone] = useState("");
   const [formRole, setFormRole] = useState<"ADMIN" | "CLIENTE" | "INVITADO">("CLIENTE");
+  const [formPatente, setFormPatente] = useState("");
+  const [formBrand, setFormBrand] = useState("");
+  const [formModel, setFormModel] = useState("");
+  const [formColor, setFormColor] = useState("");
 
   // Delete Dialog states
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -115,6 +126,10 @@ export const UsuariosAdmin: React.FC = () => {
     setFormPassword("");
     setFormPhone("");
     setFormRole("CLIENTE");
+    setFormPatente("");
+    setFormBrand("");
+    setFormModel("");
+    setFormColor("");
     setError("");
     setIsModalOpen(true);
   };
@@ -127,6 +142,10 @@ export const UsuariosAdmin: React.FC = () => {
     setFormPassword(""); // Password empty by default on edit
     setFormPhone(targetUser.phone || "");
     setFormRole(targetUser.role);
+    setFormPatente(targetUser.vehicles?.[0]?.licensePlate || "");
+    setFormBrand(targetUser.vehicles?.[0]?.brand || "");
+    setFormModel(targetUser.vehicles?.[0]?.model || "");
+    setFormColor(targetUser.vehicles?.[0]?.color || "");
     setError("");
     setIsModalOpen(true);
   };
@@ -148,6 +167,10 @@ export const UsuariosAdmin: React.FC = () => {
         name: formName,
         phone: formPhone || null,
         role: formRole,
+        patente: formPatente || null,
+        brand: formBrand || null,
+        model: formModel || null,
+        color: formColor || null,
       };
 
       if (formPassword) {
@@ -219,7 +242,7 @@ export const UsuariosAdmin: React.FC = () => {
       <aside className="w-66 border-r border-border bg-background/80 backdrop-blur-md hidden md:flex flex-col z-20">
         <div className="h-16 flex items-center px-6 border-b border-border gap-3">
           <div className="bg-[#00f0ff]/10 border border-[#00f0ff]/20 p-2 shadow-[0_0_8px_rgba(0,240,255,0.2)]">
-            <Car className="w-5 h-5 text-[#00f0ff] drop-shadow-[0_0_4px_rgba(0,240,255,0.4)]" />
+            <VanguardCarIcon className="text-[#00f0ff] drop-shadow-[0_0_4px_rgba(0,240,255,0.4)]" size={20} />
           </div>
           <span className="font-black text-base uppercase tracking-[0.2em] bg-gradient-to-r from-[#00f0ff] to-cyan-300 bg-clip-text text-transparent">Vanguard</span>
         </div>
@@ -339,7 +362,7 @@ export const UsuariosAdmin: React.FC = () => {
                   <p className="text-2xl font-black font-mono text-[#818cf8]">{stats.clientes}</p>
                 </div>
                 <div className="p-2.5 bg-indigo-500/10 border border-indigo-500/20 rounded-md">
-                  <Car className="w-5 h-5 text-[#818cf8] drop-shadow-[0_0_4px_rgba(129,140,248,0.4)]" />
+                  <VanguardCarIcon className="text-[#818cf8] drop-shadow-[0_0_4px_rgba(129,140,248,0.4)]" size={20} />
                 </div>
               </CardContent>
             </Card>
@@ -411,6 +434,7 @@ export const UsuariosAdmin: React.FC = () => {
                     <tr className="border-b border-border bg-background/25 font-mono text-[10px] font-bold uppercase tracking-wider text-[#8892a4] select-none">
                       <th className="py-4 px-6">Identidad</th>
                       <th className="py-4 px-6">Contacto</th>
+                      <th className="py-4 px-6">Vehículo</th>
                       <th className="py-4 px-6">Rol</th>
                       <th className="py-4 px-6 hidden lg:table-cell">Fecha Registro</th>
                       <th className="py-4 px-6 text-right">Acciones</th>
@@ -419,7 +443,7 @@ export const UsuariosAdmin: React.FC = () => {
                   <tbody className="divide-y divide-border/40">
                     {filteredUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-12 text-center text-xs font-semibold text-[#8892a4] font-mono uppercase tracking-widest">
+                        <td colSpan={6} className="py-12 text-center text-xs font-semibold text-[#8892a4] font-mono uppercase tracking-widest">
                           No se encontraron usuarios coincidentes
                         </td>
                       </tr>
@@ -453,6 +477,22 @@ export const UsuariosAdmin: React.FC = () => {
                               </span>
                             ) : (
                               <span className="text-[#8892a4]/40 font-mono">—</span>
+                            )}
+                          </td>
+
+                          {/* Vehicle Column */}
+                          <td className="py-3 px-6">
+                            {item.vehicles && item.vehicles.length > 0 ? (
+                              <div className="flex flex-col gap-1">
+                                {item.vehicles.map((v, idx) => (
+                                  <span key={idx} className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold text-[#00f0ff] bg-[#00f0ff]/10 px-2 py-0.5 border border-[#00f0ff]/20 w-fit">
+                                    <VanguardCarIcon size={12} className="opacity-70" />
+                                    {v.licensePlate}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-[#8892a4]/40 font-mono text-[10px]">—</span>
                             )}
                           </td>
 
@@ -639,6 +679,60 @@ export const UsuariosAdmin: React.FC = () => {
                   <option value="ADMIN">ADMIN (Administrador)</option>
                   <option value="INVITADO">INVITADO (Temporal)</option>
                 </select>
+              </div>
+
+              {/* Vehicle Section Header */}
+              <div className="pt-2 border-t border-border/20">
+                <span className="text-[10px] font-black uppercase tracking-[0.25em] font-mono text-[#00f0ff]">Vehículo Asociado (Opcional)</span>
+              </div>
+
+              {/* License Plate */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-wider font-mono">Patente</label>
+                  <input
+                    type="text"
+                    value={formPatente}
+                    onChange={(e) => setFormPatente(e.target.value.toUpperCase())}
+                    className="w-full h-10 px-3 bg-[#05070a]/60 border border-border text-[#e8ecf1] font-semibold text-xs transition duration-300 focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff]/30 outline-none font-mono uppercase"
+                    placeholder="ej. AB123CD"
+                    maxLength={8}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-wider font-mono">Marca</label>
+                  <input
+                    type="text"
+                    value={formBrand}
+                    onChange={(e) => setFormBrand(e.target.value)}
+                    className="w-full h-10 px-3 bg-[#05070a]/60 border border-border text-[#e8ecf1] font-semibold text-xs transition duration-300 focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff]/30 outline-none font-mono"
+                    placeholder="ej. Toyota"
+                  />
+                </div>
+              </div>
+
+              {/* Model and Color */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-wider font-mono">Modelo</label>
+                  <input
+                    type="text"
+                    value={formModel}
+                    onChange={(e) => setFormModel(e.target.value)}
+                    className="w-full h-10 px-3 bg-[#05070a]/60 border border-border text-[#e8ecf1] font-semibold text-xs transition duration-300 focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff]/30 outline-none font-mono"
+                    placeholder="ej. Corolla"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-wider font-mono">Color</label>
+                  <input
+                    type="text"
+                    value={formColor}
+                    onChange={(e) => setFormColor(e.target.value)}
+                    className="w-full h-10 px-3 bg-[#05070a]/60 border border-border text-[#e8ecf1] font-semibold text-xs transition duration-300 focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff]/30 outline-none font-mono"
+                    placeholder="ej. Blanco"
+                  />
+                </div>
               </div>
 
               {/* Actions Footer */}

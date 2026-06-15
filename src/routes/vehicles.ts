@@ -1,14 +1,17 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireAdmin } from "../middleware/auth";
+import { vehicleController } from "../controllers/vehicle.controller";
 
 const router = Router();
 
 // Protect all routes
 router.use(requireAuth);
 
-// Basic placeholder GET route
-router.get("/", (req, res) => {
-  res.json({ success: true, message: "Vehicles route active" });
-});
+router.get("/", requireAdmin, vehicleController.getVehicles);
+router.get("/:id", vehicleController.getVehicleById);
+router.get("/plate/:plate", vehicleController.getVehicleByPlate);
+router.post("/", vehicleController.createVehicle);
+router.put("/:id", requireAdmin, vehicleController.updateVehicle);
+router.delete("/:id", requireAdmin, vehicleController.deleteVehicle);
 
 export default router;

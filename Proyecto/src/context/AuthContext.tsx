@@ -23,7 +23,7 @@ interface AuthContextType {
   /** Función para iniciar sesión mediante correo y contraseña. */
   login: (email: string, pass: string) => Promise<void>;
   /** Función para registrar un nuevo usuario en la plataforma. */
-  register: (email: string, pass: string, name: string, phone?: string) => Promise<void>;
+  register: (email: string, pass: string, name: string, phone?: string, patente?: string, brand?: string, model?: string, color?: string) => Promise<void>;
   /** Función para iniciar sesión como invitado usando una patente de vehículo. */
   loginInvitado: (licensePlate: string) => Promise<void>;
   /** Función para cerrar la sesión activa y limpiar el almacenamiento local. */
@@ -69,10 +69,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const register = async (email: string, pass: string, name: string, phone?: string) => {
+  const register = async (email: string, pass: string, name: string, phone?: string, patente?: string, brand?: string, model?: string, color?: string) => {
     setIsLoading(true);
     try {
-      const { user: userData } = await authService.register({ email, password: pass, name, phone });
+      const { user: userData } = await authService.register({ email, password: pass, name, phone, patente, brand, model, color });
       setUser(userData);
     } finally {
       setIsLoading(false);

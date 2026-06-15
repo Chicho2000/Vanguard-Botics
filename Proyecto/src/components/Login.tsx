@@ -34,6 +34,10 @@ export const Login: React.FC = () => {
   // Register specific states
   const [regNombre, setRegNombre] = useState('');
   const [regTelefono, setRegTelefono] = useState('');
+  const [regPatente, setRegPatente] = useState('');
+  const [regMarca, setRegMarca] = useState('');
+  const [regModelo, setRegModelo] = useState('');
+  const [regColor, setRegColor] = useState('');
   const [regPasswordConfirm, setRegPasswordConfirm] = useState('');
 
   // Color configuration depending on the selected active tab
@@ -98,7 +102,10 @@ export const Login: React.FC = () => {
         if (password !== regPasswordConfirm) {
           throw new Error('Las contraseñas no coinciden');
         }
-        await contextRegister(email, password, regNombre, regTelefono);
+        if (!regPatente.trim()) {
+          throw new Error('La patente del vehículo es obligatoria');
+        }
+        await contextRegister(email, password, regNombre, regTelefono, regPatente.trim(), regMarca, regModelo, regColor);
         setSuccess('¡Registro exitoso! Iniciando sesión...');
         setTimeout(() => navigate('/cliente'), 1500);
       }
@@ -197,7 +204,7 @@ export const Login: React.FC = () => {
           edgeSensitivity={25}
           className="w-full max-w-md"
         >
-          <div className={`h-[485px] p-5 sm:p-7 relative overflow-hidden transition-all duration-500`}>
+          <div className={`min-h-[485px] h-auto p-5 sm:p-7 pb-12 relative overflow-hidden transition-all duration-500`}>
             {/* Top-edge dynamic neon accent line */}
             <div className={`absolute top-0 left-0 right-0 h-1 transition-all duration-500 ${colors.topBar}`}></div>
 
@@ -335,6 +342,52 @@ export const Login: React.FC = () => {
                         className={`h-10 bg-background/40 border-border focus-visible:ring-offset-0 focus-visible:ring-2 focus-visible:outline-none transition duration-300 ${colors.inputFocus}`}
                         value={regTelefono}
                         onChange={(e) => setRegTelefono(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="reg-patente" className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Patente del Vehículo *</Label>
+                    <Input
+                      id="reg-patente"
+                      placeholder="AB123CD"
+                      maxLength={8}
+                      className={`h-10 bg-background/40 border-border focus-visible:ring-offset-0 focus-visible:ring-2 focus-visible:outline-none transition duration-300 ${colors.inputFocus} uppercase font-mono`}
+                      value={regPatente}
+                      onChange={(e) => setRegPatente(e.target.value.toUpperCase())}
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="reg-marca" className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Marca</Label>
+                      <Input
+                        id="reg-marca"
+                        placeholder="ej. Ford"
+                        className={`h-10 bg-background/40 border-border focus-visible:ring-offset-0 focus-visible:ring-2 focus-visible:outline-none transition duration-300 ${colors.inputFocus}`}
+                        value={regMarca}
+                        onChange={(e) => setRegMarca(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="reg-modelo" className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Modelo</Label>
+                      <Input
+                        id="reg-modelo"
+                        placeholder="ej. Fiesta"
+                        className={`h-10 bg-background/40 border-border focus-visible:ring-offset-0 focus-visible:ring-2 focus-visible:outline-none transition duration-300 ${colors.inputFocus}`}
+                        value={regModelo}
+                        onChange={(e) => setRegModelo(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="reg-color" className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Color</Label>
+                      <Input
+                        id="reg-color"
+                        placeholder="ej. Gris"
+                        className={`h-10 bg-background/40 border-border focus-visible:ring-offset-0 focus-visible:ring-2 focus-visible:outline-none transition duration-300 ${colors.inputFocus}`}
+                        value={regColor}
+                        onChange={(e) => setRegColor(e.target.value)}
                       />
                     </div>
                   </div>

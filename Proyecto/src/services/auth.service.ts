@@ -50,10 +50,14 @@ export const authService = {
    * @param {string} payload.password - Contraseña.
    * @param {string} payload.name - Nombre del usuario.
    * @param {string} [payload.phone] - Número telefónico (opcional).
+   * @param {string} [payload.patente] - Patente del vehículo (opcional).
+   * @param {string} [payload.brand] - Marca del vehículo (opcional).
+   * @param {string} [payload.model] - Modelo del vehículo (opcional).
+   * @param {string} [payload.color] - Color del vehículo (opcional).
    * @returns {Promise<any>} Promesa con los datos devueltos por el servidor.
    * @throws {Error} Si el registro falla.
    */
-  async register(payload: { email: string; password: string; name: string; phone?: string }) {
+  async register(payload: { email: string; password: string; name: string; phone?: string; patente?: string; brand?: string; model?: string; color?: string }) {
     const response = await fetch(`${API_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

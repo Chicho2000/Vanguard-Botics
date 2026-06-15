@@ -47,8 +47,18 @@ export const DashboardInvitado: React.FC = () => {
   // Tarifa por hora — fetched from admin config (fallback: 500)
   const [tarifaHora, setTarifaHora] = useState<number>(500);
 
-  // Entry time — captured when the component mounts (simulating session start)
-  const [entryTime] = useState<Date>(() => new Date());
+  // Entry time — persisted in sessionStorage so it survives page reloads
+  const [entryTime] = useState<Date>(() => {
+    const storageKey = `vanguard_entry_${user?.patente || "guest"}`;
+    const saved = sessionStorage.getItem(storageKey);
+    if (saved) {
+      const parsed = new Date(saved);
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+    const now = new Date();
+    sessionStorage.setItem(storageKey, now.toISOString());
+    return now;
+  });
   const [elapsedMs, setElapsedMs] = useState(0);
 
   // Fetch live hourly rate from public config endpoint
@@ -222,7 +232,11 @@ export const DashboardInvitado: React.FC = () => {
 
           <Button 
             variant="ghost" 
-            onClick={logout} 
+            onClick={() => {
+              const storageKey = `vanguard_entry_${user?.patente || "guest"}`;
+              sessionStorage.removeItem(storageKey);
+              logout();
+            }} 
             className="w-full h-12 text-[#8892a4] hover:text-[#e8ecf1] hover:bg-secondary/60 transition-all font-medium flex items-center justify-center gap-2 font-sans"
           >
             <LogOut className="w-4 h-4" />
