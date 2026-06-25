@@ -1,59 +1,48 @@
 # 📋 Resumen de Cambios Recientes — Vanguard Botics
+
 ## Período: 31 de Mayo al 15 de Junio de 2026
 
-Este documento resume los cambios realizados en el proyecto Vanguard Botics, detallando su objetivo y la lógica de funcionamiento aplicada en cada uno.
+## Detalles de Lógica y Funcionamiento Crítico
+
+### 1. ¿Cómo funciona la eliminación de usuarios
+
+La eliminación de usuarios en Vanguard Botics se realiza de forma **Física y Permanente** a nivel de base de datos. Sin embargo, para evitar violaciones de integridad referencial (claves foráneas/FK constraints) y garantizar que la base de datos no quede en un estado inconsistente, se implementó una **transacción de cascada manual y segura** en `src/repositories/user.repository.ts` usando `$transaction`:
+
+- **Paso 1 (Obtención de Relaciones):** Se buscan todas las suscripciones (`Subscription`) y todos los vehículos (`Vehicle`) vinculados al ID del usuario.
+- **Paso 2 (Obtención de Sesiones de Estacionamiento):** Se recuperan todas las sesiones de estacionamiento (`ParkingSession`) correspondientes a los vehículos del usuario.
+- **Paso 3 (Liberación Preventiva de Cocheras):** Si alguna sesión está en estado `ACTIVE`, **se actualizan los espacios de estacionamiento asociados (`ParkingSpot`) marcando `isOccupied: false`**. Esto evita que queden cocheras permanentemente marcadas como ocupadas por vehículos que ya no existen.
+- **Paso 4 (Eliminación de Pagos):** Se eliminan todos los registros de pago (`Payment`) relacionados con las suscripciones o sesiones de estacionamiento obtenidas.
+- **Paso 5 (Limpieza en Orden de Restricción):** Se eliminan las sesiones de estacionamiento, luego las suscripciones y posteriormente los vehículos.
+- **Paso 6 (Eliminación del Usuario):** Finalmente se elimina el registro del usuario (`User`).
+  Todo este proceso se ejecuta de manera atómica: si algún paso falla, la transacción se revierte (`rollback`) por completo, protegiendo la base de datos de datos huérfanos.
+
+  --En el futuro voy a revisar de ver alguna mejor opcion como habiamso hablado apra los invitados la clase pasada.--
+
+### 2. Flujo de Registro de Vehículos y Autoprovisionamiento de Abono
+
+Para eliminar datos inventados o simulados en los paneles administrativos y vistas de clientes:
+
+- **Frontend (Formulario de Registro y Modal Admin):**
+  - En el formulario de registro del cliente ([Login.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/components/Login.tsx)) y en el modal de creación/edición de usuarios de administración ([UsuariosAdmin.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/pages/UsuariosAdmin.tsx)) se agregaron campos para registrar la patente (`patente`), marca (`marca`/`brand`), modelo (`modelo`/`model`) y color del vehículo.
+- **Backend (Creación y Edición de Usuarios):**
+  - Al recibir los datos en [user.service.ts](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/src/services/user.service.ts) y [auth.service.ts](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/src/services/auth.service.ts), si se proporciona una patente, se busca si el vehículo ya existe o se crea uno nuevo asignándole el usuario.
+  - **Autoprovisionamiento de Abono:** Si se registra una patente, el sistema crea automáticamente una suscripción activa diaria (`DAILY`) de 24 horas y le genera un registro de pago con estado `APPROVED` y método `MERCADO_PAGO`. Esto garantiza que los usuarios registrados con auto tengan automáticamente el derecho a un lugar reservado.
+
+### 3. Mapeo Dinámico de Vehículos en Cocheras Reservadas
+
+- En el servicio de cocheras ([floor.service.ts](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/src/services/floor.service.ts)), se reemplazó la generación de datos inventados por una lógica basada en suscripciones reales.
+- El sistema busca todos los vehículos cuyos dueños tengan suscripciones activas (`status: "ACTIVE"`) pero que **no** tengan una sesión de estacionamiento activa (es decir, que no hayan ingresado físicamente).
+- Estos vehículos con suscripción son asignados de forma dinámica y secuencial a los espacios de estacionamiento configurados como `RESERVED` que estén vacíos.
+- En el frontend ([MapaAdmin.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/pages/MapaAdmin.tsx)), el mapa de cochera renderiza las patentes y descripciones reales (marca, modelo, color) en los tooltips al pasar el mouse por encima de los lugares reservados, mostrando exactamente qué auto tiene asignada la reserva en ese momento.
+
+### 4. Consolidación de Identidad Visual (Logotipos e Íconos)
+
+Se unificó el logotipo y estilo visual a lo largo de la aplicación reemplazando el texto estándar `VB` y los íconos genéricos `<Car>` de Lucide por el nuevo componente `<VanguardCarIcon>` con estilos premium de brillo neón:
+
+- **Navbar principal:** ([Navbar.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/components/Navbar.tsx))
+- **Paneles de administración:** ([DashboardAdmin.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/pages/DashboardAdmin.tsx))
+- **Listados y modales:** ([UsuariosAdmin.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/pages/UsuariosAdmin.tsx))
+- **Paneles cliente e invitado:** ([DashboardCliente.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/pages/DashboardCliente.tsx) y [DashboardInvitado.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/pages/DashboardInvitado.tsx))
+- **Configuración del sistema:** ([ConfiguracionAdmin.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/pages/ConfiguracionAdmin.tsx))
 
 ---
-
-## ⚙️ Cambios en el Backend y Lógica de Negocio
-
-### 1. Eliminación Física de Usuarios en Cascada
-* **Objetivo:** Permitir la baja definitiva de un usuario de forma segura, garantizando que no queden datos huérfanos ni cocheras bloqueadas en el sistema.
-* **Lógica:** Se implementó una transacción de base de datos (`$transaction`) en [user.repository.ts](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/src/repositories/user.repository.ts) que elimina los registros vinculados en un orden jerárquico estricto:
-  1. Identifica las suscripciones, vehículos y sesiones de estacionamiento del usuario.
-  2. Si hay una sesión de estacionamiento activa, actualiza el estado del espacio de estacionamiento (`ParkingSpot`) a `isOccupied: false` para liberarlo de inmediato.
-  3. Elimina los registros de pagos vinculados.
-  4. Elimina de forma definitiva las sesiones de estacionamiento, las suscripciones, los vehículos y, por último, el usuario.
-
-### 2. Autoprovisionamiento de Abono al Registrar Vehículo
-* **Objetivo:** Automatizar la asignación de un espacio de estacionamiento reservado para los usuarios que ingresan con vehículo propio, eliminando registros simulados o manuales.
-* **Lógica:** Al registrar un nuevo usuario (tanto en la página de registro de usuarios como a través del panel de administración), si se suministra una patente de vehículo:
-  - Se crea o actualiza el registro en la tabla `Vehicle`.
-  - Se genera automáticamente una suscripción activa de tipo diario (`DAILY`) por 24 horas.
-  - Se asocia un pago de prueba aprobado (`APPROVED`) con método de pago `MERCADO_PAGO`.
-
-### 3. Asignación Dinámica de Cocheras a Suscriptores
-* **Objetivo:** Ocupar los espacios reservados del mapa únicamente con autos y usuarios reales que posean abonos vigentes.
-* **Lógica:** En [floor.service.ts](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/src/services/floor.service.ts), se programó una consulta que busca a los usuarios con suscripción activa que no han iniciado una sesión de estacionamiento física (es decir, no están aparcados). Sus vehículos se asocian de manera temporal y secuencial a los slots marcados como `RESERVED` que estén vacíos, simulando su reserva asignada en el mapa en tiempo real.
-
-### 4. Soporte Local de Base de Datos y Adaptador Prisma v7
-* **Objetivo:** Resolver incompatibilidades de inicialización del cliente de Prisma tanto en el entorno de desarrollo local como en el servidor de producción.
-* **Lógica:** Se habilitó el flag de previsualización `driverAdapters` en [schema.prisma](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/prisma/schema.prisma) y se reescribió [prisma.ts](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/src/lib/prisma.ts) para usar `@prisma/adapter-pg` sobre un Pool de conexiones Postgres con `ssl: false`, permitiendo la compatibilidad con conexiones seguras e inseguras según el entorno.
-
-### 5. División Arquitectónica en Capas
-* **Objetivo:** Desacoplar la lógica de base de datos de las peticiones HTTP para facilitar la mantenibilidad y la escalabilidad del sistema.
-* **Lógica:** Se refactorizó la estructura backend separando el código en controladores (gestión de respuestas HTTP), servicios (lógica de negocio y validación), repositorios (consultas Prisma directas a la base de datos) y rutas.
-
----
-
-## 🎨 Cambios en la Interfaz (Frontend)
-
-### 1. Ampliación del Formulario de Registro de Cliente
-* **Objetivo:** Solicitar al usuario los datos obligatorios de su auto para poder asignarle una suscripción inicial.
-* **Lógica:** En [Login.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/components/Login.tsx), se añadieron campos al formulario de registro de nuevas cuentas para capturar la patente (`patente`), marca, modelo y color del auto, vinculando el vehículo directamente al nuevo perfil creado.
-
-### 2. Gestión Manual de Autos desde el Panel Administrativo
-* **Objetivo:** Permitir que los administradores controlen y modifiquen manualmente el vehículo asignado a un usuario registrado.
-* **Lógica:** En [UsuariosAdmin.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/pages/UsuariosAdmin.tsx), se agregaron los campos de vehículo (patente, marca, modelo y color) al formulario modal de creación y edición. Cuando el administrador edita un usuario e introduce una patente, el sistema crea/actualiza el vehículo en el backend y le aprovisiona una suscripción y pago si no contaba con ellos.
-
-### 3. Visualización Real en Tooltips de Cocheras Reservadas
-* **Objetivo:** Mostrar de forma explícita a qué vehículo pertenece un espacio reservado dentro del mapa.
-* **Lógica:** Se actualizó [MapaAdmin.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/pages/MapaAdmin.tsx) y la vista de cliente para que, al posicionar el cursor sobre un espacio en estado `RESERVED`, el tooltip flotante busque los datos asignados dinámicamente y renderice la patente, marca, modelo y color del auto asignado, eliminando cualquier dato simulado.
-
-### 4. Unificación de Identidad Visual (Logos e Íconos)
-* **Objetivo:** Consolidar la identidad visual del estacionamiento con una estética oscura neón de calidad premium.
-* **Lógica:** Se reemplazaron todas las representaciones genéricas de vehículos `<Car>` de Lucide y los textos de logo `VB` por el componente SVG de marca `<VanguardCarIcon>` en:
-  - Barra de navegación superior ([Navbar.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/components/Navbar.tsx)).
-  - Los dashboards administrativos, clientes e invitados ([DashboardAdmin.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/pages/DashboardAdmin.tsx), [DashboardCliente.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/pages/DashboardCliente.tsx), [DashboardInvitado.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/pages/DashboardInvitado.tsx)).
-  - La tabla de gestión de usuarios ([UsuariosAdmin.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/pages/UsuariosAdmin.tsx)).
-  - El panel de configuración ([ConfiguracionAdmin.tsx](file:///c:/Users/cirop/OneDrive/Escritorio/Chumi/Proyecto/src/pages/ConfiguracionAdmin.tsx)).

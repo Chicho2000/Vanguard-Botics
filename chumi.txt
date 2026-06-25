@@ -73,3 +73,13 @@ domingo 17 backend y login funcionando
 jueves 28/viernes 29: reunion breve con cada grupo para ver avances de los trabajos propuestos. 
 ¿como reparten tareas dentro del grupo?
 cronograma propuesto para finalizacion de cada etapa en la que piensan dividir el trabajo
+
+Emision de facturas:
+
+en nuestro caso, no hay un objeto tangible sino que un servicio. 
+
+Factura: es un comprobante electronico que tiene algunas caracteristicas: 
+
+-no todos los sujetos reciben el mismo, Consumidor final -> factura B, Responsable inscripto -> Factura A, Monotributo -> Factura C.
+La diferenciacion entre facturas es que la A DISCRIMINA el IVA ( el responsable inscripto solo paga de iva del valor que agrega ).
+Tengo que sumar todo el IVA de mis compras (de lo que compre), sumar todo el IVA de mis ventas (de lo que vendi), y luego pagarla diferencia.
