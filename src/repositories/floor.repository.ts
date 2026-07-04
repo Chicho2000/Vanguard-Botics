@@ -12,6 +12,7 @@ export const floorRepository = {
             spotType: true,
             row: true,
             column: true,
+            assignedUserId: true,
             sessions: {
               where: { status: "ACTIVE" },
               take: 1,

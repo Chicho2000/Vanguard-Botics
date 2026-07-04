@@ -34,6 +34,7 @@ model User {
 
   vehicles      Vehicle[]
   subscriptions Subscription[]
+  assignedSpot  ParkingSpot?
 
   @@map("users")
 }
@@ -88,14 +89,16 @@ enum SpotType {
 }
 
 model ParkingSpot {
-  id         Int      @id @default(autoincrement())
-  label      String   // "A1", "B3"
-  floorId    Int
-  row        Int      // para el mapa visual (grid)
-  column     Int      // para el mapa visual (grid)
-  isOccupied Boolean  @default(false)
-  spotType   SpotType @default(NORMAL)
-  maxWidthCm Float    // ancho físico del espacio
+  id             Int              @id @default(autoincrement())
+  label          String           // "A1", "B3"
+  floorId        Int
+  row            Int              // para el mapa visual (grid)
+  column         Int              // para el mapa visual (grid)
+  isOccupied     Boolean          @default(false)
+  spotType       SpotType         @default(NORMAL)
+  maxWidthCm     Float            // ancho físico del espacio
+  assignedUserId Int?             @unique
+  assignedUser   User?            @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
 
   floor    Floor            @relation(fields: [floorId], references: [id])
   sessions ParkingSession[]

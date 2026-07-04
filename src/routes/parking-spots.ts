@@ -8,6 +8,7 @@ const router = Router();
 router.use(requireAuth);
 
 router.get("/", parkingSpotController.getSpots);
+router.post("/select", parkingSpotController.selectSpot);
 router.get("/stats", parkingSpotController.getOccupancyStats);
 router.get("/floor/:floorId", parkingSpotController.getSpotsByFloor);
 router.get("/:id", parkingSpotController.getSpotById);

@@ -49,4 +49,21 @@ export const parkingSpotController = {
       next(error);
     }
   },
+
+  async selectSpot(req: any, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user.userId;
+      const role = req.user.rol;
+      if (role !== "CLIENTE") {
+        return res.status(403).json({ success: false, message: "Solo los clientes pueden elegir un espacio de estacionamiento" });
+      }
+
+      const { spotId } = req.body;
+      const parsedSpotId = (spotId !== undefined && spotId !== null) ? Number(spotId) : null;
+      const result = await parkingSpotService.selectSpot(userId, parsedSpotId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  },
 };

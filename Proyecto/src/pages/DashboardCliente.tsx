@@ -14,12 +14,16 @@ interface FloorSpot {
   isOccupied: boolean;
   spotType: string;
   isOwnVehicle?: boolean;
+  isOwnSpot?: boolean;
+  status?: string;
+  row?: number;
+  column?: number;
   vehicle: {
     licensePlate: string;
     brand: string | null;
     model: string | null;
     color: string | null;
-    entryAt: string;
+    entryAt: string | null;
   } | null;
 }
 
@@ -43,6 +47,9 @@ export const DashboardCliente: React.FC = () => {
   const [loadingSub, setLoadingSub] = useState(true);
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const [claimingSpot, setClaimingSpot] = useState(false);
+  const [selectedSpotForDetails, setSelectedSpotForDetails] = useState<FloorSpot | null>(null);
 
   useEffect(() => {
     async function loadMap() {
@@ -98,6 +105,31 @@ export const DashboardCliente: React.FC = () => {
     }
   };
 
+  const handleClaimOrReleaseSpot = async (spotId: number | null) => {
+    try {
+      setClaimingSpot(true);
+      setMessage(null);
+      await adminService.selectParkingSpot(spotId);
+
+      const floorsData = await adminService.getFloorsForUser();
+      setFloors(floorsData);
+
+      if (spotId === null) {
+        setSelectedSpotForDetails(null);
+        setMessage({ type: "success", text: "¡Cochera liberada con éxito!" });
+      } else {
+        const updatedSpot = floorsData.flatMap((f: any) => f.spots).find((s: any) => s.id === spotId);
+        setSelectedSpotForDetails(updatedSpot || null);
+        setMessage({ type: "success", text: "¡Cochera seleccionada con éxito!" });
+      }
+      setTimeout(() => setMessage(null), 5000);
+    } catch (error: any) {
+      setMessage({ type: "error", text: error.message || "Error al realizar la operación sobre la cochera." });
+    } finally {
+      setClaimingSpot(false);
+    }
+  };
+
   const getPlanLabel = (type: string) => {
     switch (type) {
       case "DAILY": return "Diario";
@@ -131,6 +163,16 @@ export const DashboardCliente: React.FC = () => {
       <Navbar />
 
       <main className="flex-1 max-w-4xl mx-auto w-full px-5 py-8 flex flex-col gap-8 z-10">
+        {/* Feedback Message Alert */}
+        {message && (
+          <div className={`flex items-center gap-3 p-3.5 border text-xs font-semibold font-mono ${message.type === "success"
+            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 animate-in fade-in-50"
+            : "bg-rose-500/10 border-rose-500/30 text-rose-400 animate-in fade-in-50"
+            }`}>
+            {message.type === "success" ? <Check className="w-4 h-4 text-emerald-400 font-bold" /> : <AlertCircle className="w-4 h-4 text-rose-400 font-bold" />}
+            <span>{message.text}</span>
+          </div>
+        )}
 
         {/* Welcome Header */}
         <div className="space-y-2 mt-2">
@@ -213,85 +255,193 @@ export const DashboardCliente: React.FC = () => {
                         </Badge>
                       </div>
 
-                      {/* Spots visualization */}
-                      <div className="flex flex-wrap gap-2 !overflow-visible">
-                        {spotsList.map((spot) => {
-                          const isSpotOccupied = spot.isOccupied;
+                      {/* Spots visualization — grouped by row so positions are preserved */}
+                      {(() => {
+                        // Group spots by their row number, preserving backend order
+                        const rowMap: Record<number, FloorSpot[]> = {};
+                        for (const spot of spotsList) {
+                          const r = spot.row ?? 1;
+                          if (!rowMap[r]) rowMap[r] = [];
+                          rowMap[r].push(spot);
+                        }
+                        const sortedRowNums = Object.keys(rowMap).map(Number).sort((a, b) => a - b);
 
-                          return (
-                            <div
-                              key={spot.id}
-                              className={`w-10 h-12 border flex flex-col items-center justify-between py-1.5 px-0.5 transition duration-300 select-none cursor-pointer relative group ${spot.isOwnVehicle
-                                ? 'bg-gradient-to-b from-[#a855f7]/10 to-[#a855f7]/25 border-[#a855f7] shadow-[0_0_12px_rgba(168,85,247,0.3)] animate-pulse hover:shadow-[0_0_18px_rgba(168,85,247,0.5)]'
-                                : isSpotOccupied
-                                  ? 'bg-gradient-to-b from-[#ff6b2c]/5 to-[#ff6b2c]/15 border-[#ff6b2c]/30 shadow-[0_0_8px_rgba(255,107,44,0.02)]'
-                                  : 'bg-gradient-to-b from-[#00f0ff]/5 to-[#00f0ff]/10 border-[#00f0ff]/20 shadow-[0_0_8px_rgba(0,240,255,0.01)] hover:border-[#00f0ff] hover:shadow-[0_0_12px_rgba(0,240,255,0.15)]'
-                                }`}
-                            >
-                              {/* Spot Label */}
-                              <span className={`text-[9px] font-black font-mono leading-none tracking-tight transition duration-200 ${spot.isOwnVehicle
-                                ? 'text-[#c084fc] group-hover:text-white'
-                                : 'text-[#8892a4] group-hover:text-white'
-                                }`}>
-                                {spot.label}
-                              </span>
+                        return (
+                          <div className="flex flex-col gap-2 !overflow-visible">
+                            {sortedRowNums.map(rowNum => {
+                              const rowSpots = (rowMap[rowNum] || []).slice().sort((a: FloorSpot, b: FloorSpot) => (a.column ?? 0) - (b.column ?? 0));
+                              return (
+                                <div key={rowNum} className="flex gap-2 !overflow-visible">
+                                  {rowSpots.map((spot: FloorSpot) => {
+                                    const isOwnSpot = !!spot.isOwnSpot;
+                                    const isOwnVehicle = !!spot.isOwnVehicle;
+                                    const isOccupied = spot.isOccupied;
+                                    const isReservedForOther = spot.status === "RESERVED" && !isOwnSpot;
+                                    const isUnavailable = isOccupied || isReservedForOther;
 
-                              {/* Spot Type Dot */}
-                              <span className={`w-1.5 h-1.5 rounded-full ${spot.isOwnVehicle
-                                ? 'bg-[#a855f7] shadow-[0_0_6px_#a855f7]'
-                                : isSpotOccupied
-                                  ? 'bg-[#ff6b2c] shadow-[0_0_4px_#ff6b2c]'
-                                  : 'bg-[#00f0ff] shadow-[0_0_4px_#00f0ff]'
-                                }`} />
+                                    return (
+                                      <div
+                                        key={spot.id}
+                                        onClick={() => {
+                                          if (!isUnavailable || isOwnSpot) {
+                                            setSelectedSpotForDetails(spot);
+                                          }
+                                        }}
+                                        className={`w-10 h-12 border flex flex-col items-center justify-between py-1.5 px-0.5 transition duration-300 select-none relative group overflow-hidden ${isOwnSpot
+                                          ? 'bg-gradient-to-b from-[#a855f7]/10 to-[#a855f7]/30 border-[#a855f7] shadow-[0_0_12px_rgba(168,85,247,0.35)] cursor-pointer hover:border-[#c084fc] hover:shadow-[0_0_18px_rgba(168,85,247,0.55)]'
+                                          : isOwnVehicle
+                                            ? 'bg-gradient-to-b from-[#8b5cf6]/15 to-[#8b5cf6]/35 border-[#8b5cf6] shadow-[0_0_12px_rgba(139,92,246,0.4)] animate-pulse cursor-pointer hover:border-[#a78bfa]'
+                                            : isUnavailable
+                                              ? 'bg-gradient-to-b from-[#ff6b2c]/5 to-[#ff6b2c]/15 border-[#ff6b2c]/40 opacity-70 cursor-not-allowed'
+                                              : 'bg-gradient-to-b from-[#00f0ff]/5 to-[#00f0ff]/10 border-[#00f0ff]/20 cursor-pointer hover:border-[#00f0ff] hover:shadow-[0_0_12px_rgba(0,240,255,0.15)]'
+                                          }`}
+                                      >
+                                        {/* Spot Label */}
+                                        <span className={`text-[9px] font-black font-mono leading-none tracking-tight transition duration-200 z-10 ${isOwnSpot || isOwnVehicle
+                                          ? 'text-[#c084fc] group-hover:text-white'
+                                          : isUnavailable
+                                            ? 'text-[#ff6b2c]/80'
+                                            : 'text-[#8892a4] group-hover:text-white'
+                                          }`}>
+                                          {spot.label}
+                                        </span>
 
-                              {/* HUD Tooltip for OWN vehicle */}
-                              {spot.isOwnVehicle && spot.vehicle && (
-                                <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2 w-52 p-3.5 bg-[#0a0c12]/95 border border-[#a855f7] text-left opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition duration-300 z-50 shadow-[0_10px_30px_rgba(0,0,0,0.9),0_0_15px_rgba(168,85,247,0.2)] flex flex-col gap-2 backdrop-blur-md rounded-none">
-                                  <div className="flex justify-between items-center text-[8px] font-mono uppercase tracking-wider text-[#a855f7] border-b border-border/40 pb-1">
-                                    <span>Tu Cochera ({spot.label})</span>
-                                    <span className="animate-pulse font-bold">Tu Auto</span>
-                                  </div>
+                                        {/* Spot Type Dot */}
+                                        <span className={`w-1.5 h-1.5 rounded-full z-10 ${isOwnSpot
+                                          ? 'bg-[#a855f7] shadow-[0_0_6px_#a855f7]'
+                                          : isOwnVehicle
+                                            ? 'bg-[#8b5cf6] shadow-[0_0_6px_#8b5cf6]'
+                                            : isUnavailable
+                                              ? 'bg-[#ff6b2c] shadow-[0_0_4px_#ff6b2c]'
+                                              : 'bg-[#00f0ff] shadow-[0_0_4px_#00f0ff]'
+                                          }`} />
 
-                                  <div className="mx-auto w-fit px-2 py-0.5 border border-[#a855f7]/40 bg-[#a855f7]/5 text-[#c084fc] font-black font-mono text-[10px] tracking-widest mt-1">
-                                    {spot.vehicle.licensePlate}
-                                  </div>
+                                        {/* HUD Tooltip for OWN spot or vehicle */}
+                                        {(isOwnSpot || isOwnVehicle) && spot.vehicle && (
+                                          <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2 w-52 p-3.5 bg-[#0a0c12]/95 border border-[#a855f7] text-left opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition duration-300 z-50 shadow-[0_10px_30px_rgba(0,0,0,0.9),0_0_15px_rgba(168,85,247,0.2)] flex flex-col gap-2 backdrop-blur-md rounded-none">
+                                            <div className="flex justify-between items-center text-[8px] font-mono uppercase tracking-wider text-[#a855f7] border-b border-border/40 pb-1">
+                                              <span>{isOwnSpot ? "Tu Cochera" : "Cochera"} ({spot.label})</span>
+                                              <span className="animate-pulse font-bold">{isOwnVehicle ? "Estacionado" : "Tu Auto"}</span>
+                                            </div>
+                                            <div className="mx-auto w-fit px-2 py-0.5 border border-[#a855f7]/40 bg-[#a855f7]/5 text-[#c084fc] font-black font-mono text-[10px] tracking-widest mt-1">
+                                              {spot.vehicle.licensePlate}
+                                            </div>
+                                            <div className="leading-tight mt-1">
+                                              <span className="block text-[8px] text-[#8892a4] uppercase font-mono tracking-wider">Vehículo</span>
+                                              <span className="block text-xs font-bold text-[#e8ecf1] truncate">
+                                                {spot.vehicle.brand || "Desconocido"} {spot.vehicle.model || ""}
+                                              </span>
+                                            </div>
+                                            {spot.vehicle.entryAt && (
+                                              <div className="flex justify-between items-center border-t border-border/30 pt-1.5 text-[8px] font-mono text-[#8892a4] mt-1">
+                                                <span>Ingreso:</span>
+                                                <span className="text-[#e8ecf1] font-bold">
+                                                  {new Date(spot.vehicle.entryAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                                                </span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
 
-                                  <div className="leading-tight mt-1">
-                                    <span className="block text-[8px] text-[#8892a4] uppercase font-mono tracking-wider">Vehículo</span>
-                                    <span className="block text-xs font-bold text-[#e8ecf1] truncate">
-                                      {spot.vehicle.brand || "Desconocido"} {spot.vehicle.model || ""}
-                                    </span>
-                                  </div>
+                                        {/* Tooltip for other unavailable spots (privacy-safe) */}
+                                        {isUnavailable && !isOwnSpot && !isOwnVehicle && (
+                                          <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2 w-32 p-2 bg-[#0a0c12]/95 border border-[#ff6b2c]/50 text-center opacity-0 pointer-events-none group-hover:opacity-100 transition duration-300 z-50 shadow-[0_8px_20px_rgba(0,0,0,0.8)] backdrop-blur-md rounded-none text-[9px] font-mono uppercase tracking-wider text-[#ff6b2c] font-semibold">
+                                            {isOccupied ? "Ocupado" : "Reservado"}
+                                          </div>
+                                        )}
 
-                                  <div className="flex justify-between items-center border-t border-border/30 pt-1.5 text-[8px] font-mono text-[#8892a4] mt-1">
-                                    <span>Ingreso:</span>
-                                    <span className="text-[#e8ecf1] font-bold">
-                                      {new Date(spot.vehicle.entryAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
-                                    </span>
-                                  </div>
+                                        {/* Tooltip for free spots */}
+                                        {!isUnavailable && !isOwnSpot && (
+                                          <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2 w-32 p-2 bg-[#0a0c12]/95 border border-[#00f0ff]/40 text-center opacity-0 pointer-events-none group-hover:opacity-100 transition duration-300 z-50 shadow-[0_8px_20px_rgba(0,0,0,0.8)] backdrop-blur-md rounded-none text-[9px] font-mono uppercase tracking-wider text-[#00f0ff] font-semibold">
+                                            Disponible
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
-                              )}
-
-                              {/* Tooltip for other occupied spots (privacy-safe) */}
-                              {isSpotOccupied && !spot.isOwnVehicle && (
-                                <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2 w-32 p-2 bg-[#0a0c12]/95 border border-[#ff6b2c]/50 text-center opacity-0 pointer-events-none group-hover:opacity-100 transition duration-300 z-50 shadow-[0_8px_20px_rgba(0,0,0,0.8)] backdrop-blur-md rounded-none text-[9px] font-mono uppercase tracking-wider text-[#ff6b2c] font-semibold">
-                                  Ocupado
-                                </div>
-                              )}
-
-                              {/* Tooltip for free spots */}
-                              {!isSpotOccupied && (
-                                <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2 w-32 p-2 bg-[#0a0c12]/95 border border-[#00f0ff]/40 text-center opacity-0 pointer-events-none group-hover:opacity-100 transition duration-300 z-50 shadow-[0_8px_20px_rgba(0,0,0,0.8)] backdrop-blur-md rounded-none text-[9px] font-mono uppercase tracking-wider text-[#00f0ff] font-semibold">
-                                  Disponible
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Selected Spot Details and Actions */}
+            {selectedSpotForDetails && (
+              <div className="mt-6 p-4 bg-[#0a0c12]/60 border border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition duration-300 animate-in fade-in-50 slide-in-from-bottom-2">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-[#8892a4] uppercase tracking-wider font-mono">Cochera Seleccionada:</span>
+                    <Badge className={`font-mono text-xs font-black px-2 py-0.5 rounded-none ${selectedSpotForDetails.isOwnSpot
+                      ? "bg-[#a855f7]/10 text-[#c084fc] border border-[#a855f7]/30"
+                      : "bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/30"
+                      }`}>
+                      {selectedSpotForDetails.label}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-[#8892a4] font-sans">
+                    Tipo: <span className="text-[#e8ecf1] font-bold font-mono">{selectedSpotForDetails.spotType}</span>
+                    <span className="mx-2 opacity-30">|</span>
+                    Estado:{" "}
+                    <span className={`font-black font-mono tracking-wide ${selectedSpotForDetails.isOwnSpot
+                      ? "text-[#c084fc]"
+                      : "text-[#00f0ff]"
+                      }`}>
+                      {selectedSpotForDetails.isOwnSpot ? "TU COCHERA ASIGNADA" : "DISPONIBLE"}
+                    </span>
+                  </p>
+
+                  {/* Warn if they already have a spot selected */}
+                  {!selectedSpotForDetails.isOwnSpot && floors.flatMap(f => f.spots).some(s => s.isOwnSpot) && (
+                    <p className="text-[10px] text-amber-400 font-mono flex items-center gap-1.5 mt-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      Al elegir esta cochera, liberarás tu cochera actual ({floors.flatMap(f => f.spots).find(s => s.isOwnSpot)?.label}).
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-2 w-full sm:w-auto shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedSpotForDetails(null)}
+                    className="border border-border/80 hover:bg-white/5 text-xs font-mono rounded-none"
+                  >
+                    Cancelar
+                  </Button>
+                  {selectedSpotForDetails.isOwnSpot ? (
+                    <Button
+                      size="sm"
+                      onClick={() => handleClaimOrReleaseSpot(null)}
+                      disabled={claimingSpot}
+                      className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border border-rose-500/30 text-xs font-mono rounded-none font-bold"
+                    >
+                      {claimingSpot ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        "Liberar Cochera"
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => handleClaimOrReleaseSpot(selectedSpotForDetails.id)}
+                      disabled={claimingSpot}
+                      className="bg-[#00f0ff] hover:bg-cyan-400 text-background font-black text-xs font-mono rounded-none shadow-[0_0_15px_rgba(0,240,255,0.3)] hover:shadow-[0_0_20px_rgba(0,240,255,0.5)] border-none"
+                    >
+                      {claimingSpot ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-background" />
+                      ) : (
+                        "Elegir esta Cochera"
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
           </CardContent>
@@ -308,16 +458,6 @@ export const DashboardCliente: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-6 pb-6 space-y-5">
-            {/* Feedback Message Alert */}
-            {message && (
-              <div className={`flex items-center gap-3 p-3.5 border text-xs font-semibold font-mono ${message.type === "success"
-                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                : "bg-rose-500/10 border-rose-500/30 text-rose-400"
-                }`}>
-                {message.type === "success" ? <Check className="w-4 h-4 text-emerald-400" /> : <AlertCircle className="w-4 h-4 text-rose-400" />}
-                <span>{message.text}</span>
-              </div>
-            )}
 
             {loadingSub ? (
               <div className="h-[140px] flex items-center justify-center text-[#8892a4]">

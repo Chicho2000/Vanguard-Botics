@@ -92,5 +92,12 @@ export const adminService = {
     });
     return data;
   },
+
+  async selectParkingSpot(spotId: number | null) {
+    return await fetchWithAuth(`${API_URL}/parking-spots/select`, {
+      method: "POST",
+      body: JSON.stringify({ spotId }),
+    });
+  },
 };
 
