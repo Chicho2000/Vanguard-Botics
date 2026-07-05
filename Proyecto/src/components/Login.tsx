@@ -105,7 +105,31 @@ export const Login: React.FC = () => {
         if (!regPatente.trim()) {
           throw new Error('La patente del vehículo es obligatoria');
         }
-        await contextRegister(email, password, regNombre, regTelefono, regPatente.trim(), regMarca, regModelo, regColor);
+
+        // Validación de Patente (formatos argentinos/Mercosur)
+        const cleanPatente = regPatente.replace(/[\s-]/g, '').toUpperCase();
+        const patenteRegex = /^(?:[A-Z]{3}\d{3}|[A-Z]{2}\d{3}[A-Z]{2}|[A-Z]\d{3}[A-Z]{3}|\d{3}[A-Z]{3})$/;
+        if (!patenteRegex.test(cleanPatente)) {
+          throw new Error('Formato de patente inválido (ej: AAA123, AA123BB, A123BCD, 123AAA)');
+        }
+
+        // Validación de Teléfono (si se ingresa)
+        if (regTelefono.trim()) {
+          const phoneRegex = /^\+?[0-9\s\-()]{6,20}$/;
+          if (!phoneRegex.test(regTelefono)) {
+            throw new Error('Número de teléfono inválido (debe contener entre 6 y 20 dígitos/caracteres válidos)');
+          }
+        }
+
+        // Validación de Marca (si se ingresa)
+        if (regMarca.trim()) {
+          const brandRegex = /^[a-zA-ZñÑáéíóúÁÉÍÓÚüÜ\s\-\.]{2,50}$/;
+          if (!brandRegex.test(regMarca.trim())) {
+            throw new Error('La marca del vehículo es inválida (solo letras, mínimo 2 caracteres)');
+          }
+        }
+
+        await contextRegister(email, password, regNombre, regTelefono, cleanPatente, regMarca, regModelo, regColor);
         setSuccess('¡Registro exitoso! Iniciando sesión...');
         setTimeout(() => navigate('/cliente'), 1500);
       }

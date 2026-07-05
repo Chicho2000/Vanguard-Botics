@@ -4,11 +4,15 @@ import { useAuth } from "../context/AuthContext";
 import { adminService } from "../services/admin.service";
 import {
   Users, Layers, Loader2, AlertCircle,
-  LayoutDashboard, Map, Settings, LogOut
+  LayoutDashboard, Map, Settings, LogOut,
+  Pencil, X, Save, Car, Zap, Bike, Accessibility
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import Dock from "@/components/ui/Dock";
 import type { DockItemData } from "@/components/ui/Dock";
 import VanguardCarIcon from "@/components/ui/VanguardCarIcon";
@@ -20,6 +24,7 @@ interface FloorSpot {
   isReserved: boolean;
   status: "OCCUPIED" | "RESERVED" | "EMPTY";
   spotType: string;
+  maxWidthCm: number;
   row: number;
   column: number;
   vehicle: {
@@ -41,12 +46,40 @@ interface FloorOverview {
   spots: FloorSpot[];
 }
 
+interface EditModalState {
+  spot: FloorSpot;
+  floorId: number;
+  label: string;
+  spotType: string;
+  maxWidthCm: string;
+}
+
+const SPOT_TYPE_OPTIONS = [
+  { value: "NORMAL", label: "Normal", icon: Car, color: "#00f0ff" },
+  { value: "DISABLED", label: "Discapacitado", icon: Accessibility, color: "#a855f7" },
+  { value: "EV_CHARGING", label: "Carga Eléctrica", icon: Zap, color: "#22c55e" },
+  { value: "MOTORCYCLE", label: "Moto", icon: Bike, color: "#f59e0b" },
+];
+
+const spotTypeColor: Record<string, string> = {
+  NORMAL: "#00f0ff",
+  DISABLED: "#a855f7",
+  EV_CHARGING: "#22c55e",
+  MOTORCYCLE: "#f59e0b",
+};
+
 export const MapaAdmin: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [floors, setFloors] = useState<FloorOverview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Edit modal state
+  const [editModal, setEditModal] = useState<EditModalState | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saveSuccess, setSaveSuccess] = useState("");
 
   useEffect(() => {
     document.documentElement.classList.add("admin-active");
@@ -55,21 +88,77 @@ export const MapaAdmin: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    async function loadMapData() {
-      try {
-        setLoading(true);
-        setError("");
-        const floorsData = await adminService.getFloors();
-        setFloors(floorsData);
-      } catch (err: any) {
-        setError(err.message || "Error al cargar la telemetría del mapa");
-      } finally {
-        setLoading(false);
-      }
+  async function loadMapData() {
+    try {
+      setLoading(true);
+      setError("");
+      const floorsData = await adminService.getFloors();
+      setFloors(floorsData);
+    } catch (err: any) {
+      setError(err.message || "Error al cargar la telemetría del mapa");
+    } finally {
+      setLoading(false);
     }
+  }
+
+  useEffect(() => {
     loadMapData();
   }, []);
+
+  const openEditModal = (spot: FloorSpot, floorId: number) => {
+    setSaveError("");
+    setSaveSuccess("");
+    setEditModal({
+      spot,
+      floorId,
+      label: spot.label,
+      spotType: spot.spotType,
+      maxWidthCm: spot.maxWidthCm?.toString() ?? "",
+    });
+  };
+
+  const closeEditModal = () => {
+    if (!saving) setEditModal(null);
+  };
+
+  const handleSave = async () => {
+    if (!editModal) return;
+    setSaving(true);
+    setSaveError("");
+    setSaveSuccess("");
+    try {
+      const payload: Record<string, any> = {};
+      if (editModal.label.trim() && editModal.label.trim() !== editModal.spot.label) {
+        payload.label = editModal.label.trim();
+      }
+      if (editModal.spotType !== editModal.spot.spotType) {
+        payload.spotType = editModal.spotType;
+      }
+      const parsedWidth = parseFloat(editModal.maxWidthCm);
+      if (!isNaN(parsedWidth) && parsedWidth !== editModal.spot.maxWidthCm) {
+        payload.maxWidthCm = parsedWidth;
+      }
+
+      if (Object.keys(payload).length === 0) {
+        setSaveError("No hay cambios para guardar.");
+        setSaving(false);
+        return;
+      }
+
+      await adminService.updateParkingSpot(editModal.spot.id, payload);
+      setSaveSuccess("¡Cambios guardados correctamente!");
+      // Reload map data in background
+      await loadMapData();
+      setTimeout(() => {
+        setEditModal(null);
+        setSaveSuccess("");
+      }, 1200);
+    } catch (err: any) {
+      setSaveError(err.message || "Error al guardar los cambios.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Dock items for quick access
   const dockItems: DockItemData[] = [
@@ -183,11 +272,15 @@ export const MapaAdmin: React.FC = () => {
           <div>
             <h1 className="text-lg font-black uppercase tracking-[0.15em] text-[#e8ecf1]">Mapa Satelital</h1>
           </div>
+          <div className="flex items-center gap-2 text-[10px] font-mono text-[#8892a4] uppercase tracking-widest">
+            <Pencil className="w-3 h-3 text-[#00f0ff]/60" />
+            <span>Clic en un lugar para editarlo</span>
+          </div>
         </header>
 
         {/* Scrollable Work Area */}
         <div className="flex-1 overflow-auto p-8 pb-28 space-y-8">
-          
+
           {floors.length === 0 ? (
             <Card className="border-border bg-card/60 backdrop-blur-md shadow-2xl p-12 text-center">
               <CardContent className="flex flex-col items-center justify-center gap-3 text-[#8892a4]">
@@ -196,7 +289,6 @@ export const MapaAdmin: React.FC = () => {
               </CardContent>
             </Card>
           ) : (
-            /* Render floors side-by-side or stacked cleanly in a responsive grid */
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {floors.map((floor) => {
                 const spotsList = floor.spots || [];
@@ -227,7 +319,7 @@ export const MapaAdmin: React.FC = () => {
                         </Badge>
                       </div>
                     </CardHeader>
-                    
+
                     <CardContent className="p-6 flex-1 !overflow-visible space-y-6">
                       {sortedRowNumbers.map((rowNum) => {
                         const rowSpots = spotsByRow[rowNum].sort((a, b) => a.column - b.column);
@@ -245,6 +337,7 @@ export const MapaAdmin: React.FC = () => {
                                 const isSpotOccupied = spot.status === "OCCUPIED";
                                 const isSpotReserved = spot.status === "RESERVED";
                                 const vehicle = spot.vehicle;
+                                const typeColor = spotTypeColor[spot.spotType] || "#00f0ff";
 
                                 const isLeftLimit = index === 0 || index === 1;
                                 const isRightLimit = index === rowSpots.length - 1 || index === rowSpots.length - 2;
@@ -257,6 +350,7 @@ export const MapaAdmin: React.FC = () => {
                                 return (
                                   <div
                                     key={spot.id}
+                                    onClick={() => openEditModal(spot, floor.id)}
                                     className={`h-16 border flex flex-col items-center justify-between py-2 px-1 relative group transition duration-300 select-none cursor-pointer ${
                                       isSpotOccupied
                                         ? 'bg-gradient-to-b from-[#ff6b2c]/5 to-[#ff6b2c]/15 border-[#ff6b2c]/40 shadow-[0_0_8px_rgba(255,107,44,0.02)] hover:border-[#ff6b2c] hover:shadow-[0_0_15px_rgba(255,107,44,0.2)]'
@@ -265,12 +359,23 @@ export const MapaAdmin: React.FC = () => {
                                           : 'bg-gradient-to-b from-[#00f0ff]/5 to-[#00f0ff]/10 border-[#00f0ff]/25 shadow-[0_0_8px_rgba(0,240,255,0.01)] hover:border-[#00f0ff] hover:shadow-[0_0_15px_rgba(0,240,255,0.2)]'
                                     }`}
                                   >
+                                    {/* Edit overlay icon on hover */}
+                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200 z-10 bg-black/30">
+                                      <Pencil className="w-4 h-4 text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.5)]" />
+                                    </div>
+
+                                    {/* Spot Type indicator dot (colored by type) */}
+                                    <span
+                                      className="w-1.5 h-1.5 rounded-full absolute top-1.5 right-1.5"
+                                      style={{ backgroundColor: typeColor, boxShadow: `0 0 4px ${typeColor}` }}
+                                    />
+
                                     {/* Spot Label */}
                                     <span className="text-[10px] font-black font-mono leading-none tracking-wider text-[#8892a4] group-hover:text-white transition duration-200">
                                       {spot.label}
                                     </span>
 
-                                    {/* Spot Type Dot */}
+                                    {/* Status dot */}
                                     <span className={`w-2 h-2 rounded-full ${
                                       isSpotOccupied
                                         ? 'bg-[#ff6b2c] shadow-[0_0_6px_#ff6b2c]'
@@ -281,66 +386,26 @@ export const MapaAdmin: React.FC = () => {
 
                                     {/* Tooltip for Occupied Spot */}
                                     {isSpotOccupied && vehicle && (
-                                      <div className={`absolute bottom-18 w-60 p-4 bg-[#0a0c12]/95 border border-[#ff6b2c]/50 text-left opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition duration-300 z-50 shadow-[0_10px_35px_rgba(0,0,0,0.9),0_0_20px_rgba(255,107,44,0.25)] flex flex-col gap-2.5 backdrop-blur-md rounded-none ${tooltipAlignClass}`}>
+                                      <div className={`absolute bottom-18 w-60 p-4 bg-[#0a0c12]/95 border border-[#ff6b2c]/50 text-left opacity-0 pointer-events-none group-hover:opacity-0 transition duration-300 z-50 shadow-[0_10px_35px_rgba(0,0,0,0.9),0_0_20px_rgba(255,107,44,0.25)] flex flex-col gap-2.5 backdrop-blur-md rounded-none ${tooltipAlignClass}`}>
                                         <div className="flex justify-between items-center text-[9px] font-mono uppercase tracking-wider text-[#ff6b2c]/70 border-b border-border/40 pb-1">
                                           <span>Cochera {spot.label}</span>
                                           <span>Ocupado</span>
                                         </div>
-
                                         <div className="mx-auto w-fit px-3 py-1 border border-[#ff6b2c]/40 bg-[#ff6b2c]/5 text-[#ff6b2c] font-black font-mono text-xs tracking-widest mt-1">
                                           {vehicle.licensePlate}
                                         </div>
-
                                         <div className="leading-tight mt-1">
                                           <span className="block text-[9px] text-[#8892a4] uppercase font-mono tracking-wider">Vehículo</span>
                                           <span className="block text-xs font-bold text-[#e8ecf1] truncate">
                                             {vehicle.brand || "Desconocido"} {vehicle.model || ""}
                                           </span>
                                         </div>
-
                                         <div className="flex justify-between items-center border-t border-border/30 pt-2 text-[9px] font-mono text-[#8892a4] mt-1">
                                           <span>Ingreso:</span>
                                           <span className="text-[#e8ecf1] font-bold">
                                             {new Date(vehicle.entryAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
                                           </span>
                                         </div>
-                                      </div>
-                                    )}
-
-                                    {/* Tooltip for Reserved Spot */}
-                                    {isSpotReserved && (
-                                      <div className={`absolute bottom-18 w-60 p-4 bg-[#0a0c12]/95 border border-[#6366f1]/50 text-left opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition duration-300 z-50 shadow-[0_10px_35px_rgba(0,0,0,0.9),0_0_20px_rgba(99,102,241,0.25)] flex flex-col gap-2.5 backdrop-blur-md rounded-none ${tooltipAlignClass}`}>
-                                        <div className="flex justify-between items-center text-[9px] font-mono uppercase tracking-wider text-[#6366f1]/70 border-b border-border/40 pb-1">
-                                          <span>Cochera {spot.label}</span>
-                                          <span>Reservado</span>
-                                        </div>
-                                        {vehicle ? (
-                                          <>
-                                            <div className="mx-auto w-fit px-3 py-1 border border-[#6366f1]/40 bg-[#6366f1]/5 text-[#6366f1] font-black font-mono text-xs tracking-widest mt-1">
-                                              {vehicle.licensePlate}
-                                            </div>
-                                            <div className="leading-tight mt-1">
-                                              <span className="block text-[9px] text-[#8892a4] uppercase font-mono tracking-wider">Abonado / Vehículo</span>
-                                              <span className="block text-xs font-bold text-[#e8ecf1] truncate">
-                                                {vehicle.brand || "Desconocido"} {vehicle.model || ""}
-                                              </span>
-                                              {vehicle.color && (
-                                                <span className="block text-[10px] text-[#8892a4] font-mono mt-0.5">
-                                                  Color: {vehicle.color}
-                                                </span>
-                                              )}
-                                            </div>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <div className="text-center py-2 text-xs font-bold text-[#6366f1] font-mono tracking-wide">
-                                              ESPACIO RESERVADO
-                                            </div>
-                                            <div className="leading-tight mt-1 text-[11px] text-[#8892a4]">
-                                              Reservado para un abonado activo.
-                                            </div>
-                                          </>
-                                        )}
                                       </div>
                                     )}
                                   </div>
@@ -371,6 +436,178 @@ export const MapaAdmin: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* ─── EDIT SPOT MODAL ───────────────────────────────────────── */}
+      {editModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) closeEditModal(); }}
+        >
+          <div className="w-full max-w-md bg-[#0a0c12] border border-[#00f0ff]/25 shadow-[0_0_60px_rgba(0,240,255,0.08),0_25px_50px_rgba(0,0,0,0.8)] relative overflow-hidden">
+            {/* Top accent bar */}
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#00f0ff] shadow-[0_1px_10px_rgba(0,240,255,0.5)]" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border/40">
+              <div className="flex items-center gap-3">
+                <div className="bg-[#00f0ff]/10 border border-[#00f0ff]/20 p-2">
+                  <Pencil className="w-4 h-4 text-[#00f0ff]" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-black uppercase tracking-[0.15em] text-[#e8ecf1]">
+                    Editar Lugar {editModal.spot.label}
+                  </h2>
+                  <p className="text-[10px] text-[#8892a4] font-mono mt-0.5">
+                    ID #{editModal.spot.id} · {editModal.spot.status === "OCCUPIED" ? "Ocupado" : editModal.spot.status === "RESERVED" ? "Reservado" : "Libre"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closeEditModal}
+                disabled={saving}
+                className="p-2 text-[#8892a4] hover:text-[#e8ecf1] hover:bg-secondary/60 transition duration-200 disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <div className="px-6 py-5 space-y-5">
+              {/* Label */}
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">
+                  Etiqueta del Lugar
+                </Label>
+                <Input
+                  id="edit-spot-label"
+                  value={editModal.label}
+                  onChange={(e) => setEditModal({ ...editModal, label: e.target.value.toUpperCase() })}
+                  disabled={saving}
+                  maxLength={8}
+                  placeholder="Ej: A1, B3..."
+                  className="h-10 bg-background/40 border-border focus-visible:ring-[#00f0ff]/35 focus-visible:border-[#00f0ff]/50 focus-visible:ring-2 focus-visible:ring-offset-0 transition duration-300 font-mono uppercase tracking-wider"
+                />
+              </div>
+
+              {/* Spot Type */}
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">
+                  Tipo de Lugar
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {SPOT_TYPE_OPTIONS.map((opt) => {
+                    const IconComp = opt.icon;
+                    const isSelected = editModal.spotType === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        disabled={saving}
+                        onClick={() => setEditModal({ ...editModal, spotType: opt.value })}
+                        className={`flex items-center gap-2.5 h-11 px-3 border text-left text-xs font-semibold transition duration-200 disabled:opacity-50 ${
+                          isSelected
+                            ? "border-opacity-60 bg-opacity-10"
+                            : "border-border text-[#8892a4] hover:text-[#e8ecf1] hover:border-border/80 bg-background/30 hover:bg-secondary/40"
+                        }`}
+                        style={isSelected ? {
+                          borderColor: `${opt.color}60`,
+                          backgroundColor: `${opt.color}10`,
+                          color: opt.color,
+                          boxShadow: `0 0 12px ${opt.color}18`
+                        } : {}}
+                      >
+                        <IconComp className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Max Width */}
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">
+                  Ancho Máximo (cm)
+                </Label>
+                <Input
+                  id="edit-spot-width"
+                  type="number"
+                  min={100}
+                  max={600}
+                  step={1}
+                  value={editModal.maxWidthCm}
+                  onChange={(e) => setEditModal({ ...editModal, maxWidthCm: e.target.value })}
+                  disabled={saving}
+                  placeholder="Ej: 250"
+                  className="h-10 bg-background/40 border-border focus-visible:ring-[#00f0ff]/35 focus-visible:border-[#00f0ff]/50 focus-visible:ring-2 focus-visible:ring-offset-0 transition duration-300 font-mono"
+                />
+                <p className="text-[10px] text-[#8892a4]/60 font-mono">Ancho físico del espacio de estacionamiento en centímetros.</p>
+              </div>
+
+              {/* Current status info */}
+              <div className="p-3 bg-secondary/30 border border-border/40 space-y-1">
+                <p className="text-[10px] font-bold text-[#8892a4] uppercase tracking-widest font-mono">Estado Actual</p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className={`text-xs font-bold font-mono px-2 py-0.5 border ${
+                    editModal.spot.status === "OCCUPIED" ? "text-[#ff6b2c] border-[#ff6b2c]/30 bg-[#ff6b2c]/5" :
+                    editModal.spot.status === "RESERVED" ? "text-[#6366f1] border-[#6366f1]/30 bg-[#6366f1]/5" :
+                    "text-[#00f0ff] border-[#00f0ff]/30 bg-[#00f0ff]/5"
+                  }`}>
+                    {editModal.spot.status === "OCCUPIED" ? "Ocupado" : editModal.spot.status === "RESERVED" ? "Reservado" : "Libre"}
+                  </span>
+                  {editModal.spot.vehicle && (
+                    <span className="text-[10px] text-[#8892a4] font-mono">
+                      🚗 {editModal.spot.vehicle.licensePlate}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-[#8892a4]/50 font-mono mt-1">El estado de ocupación lo gestiona el sistema automáticamente.</p>
+              </div>
+
+              {/* Error / Success feedback */}
+              {saveError && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[11px] font-bold">
+                  {saveError}
+                </div>
+              )}
+              {saveSuccess && (
+                <div className="p-3 bg-[#00f0ff]/10 border border-[#00f0ff]/20 text-[#00f0ff] text-[11px] font-bold">
+                  {saveSuccess}
+                </div>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-6 pb-6 flex gap-3">
+              <Button
+                variant="outline"
+                onClick={closeEditModal}
+                disabled={saving}
+                className="flex-1 h-10 border-border text-[#8892a4] hover:text-[#e8ecf1] hover:bg-secondary/60 font-bold text-xs tracking-wider transition duration-300"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 h-10 bg-[#00f0ff] hover:bg-[#33f3ff] text-[#050508] font-bold text-xs tracking-wider transition duration-300 shadow-md hover:shadow-[#00f0ff]/25 hover:shadow-lg"
+              >
+                {saving ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Guardando...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Save className="w-3.5 h-3.5" />
+                    Guardar Cambios
+                  </span>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

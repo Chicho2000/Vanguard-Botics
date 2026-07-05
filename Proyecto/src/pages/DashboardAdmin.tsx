@@ -15,11 +15,37 @@ import Dock from "@/components/ui/Dock";
 import type { DockItemData } from "@/components/ui/Dock";
 import VanguardCarIcon from "@/components/ui/VanguardCarIcon";
 
+interface RecentUser {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: string;
+  vehicles: { licensePlate: string; brand: string | null; model: string | null }[];
+  subscription: { type: string; validUntil: string } | null;
+  assignedSpot: string | null;
+}
+
+interface ActiveReservation {
+  spotId: number;
+  label: string;
+  floorName: string;
+  userId: number;
+  userName: string;
+  userEmail: string;
+  licensePlate: string | null;
+  subscriptionType: string | null;
+  subscriptionValidUntil: string | null;
+}
+
 interface Stats {
   totalSpots: number;
   occupancyRate: number;
   totalUsers: number;
   todayRevenue: number;
+  recentUsers?: RecentUser[];
+  activeReservations?: ActiveReservation[];
+  chartData?: { time: string; ocupacion: number; recaudacion: number }[];
 }
 
 interface RecentSession {
@@ -39,8 +65,7 @@ interface RecentSession {
 
 
 
-// Chart data will come from API — no mock data
-const chartData: { time: string; ocupacion: number; recaudacion: number }[] = [];
+// Chart data is retrieved from stats API
 
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -59,6 +84,7 @@ export const DashboardAdmin: React.FC = () => {
   const [activity, setActivity] = useState<RecentSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [summaryTab, setSummaryTab] = useState<"registros" | "reservas">("registros");
 
   useEffect(() => {
     document.documentElement.classList.add("admin-active");
@@ -264,31 +290,53 @@ export const DashboardAdmin: React.FC = () => {
                 <CardDescription className="text-xs text-[#8892a4] font-mono">Métricas analíticas del día en curso</CardDescription>
               </CardHeader>
               <CardContent className="px-6 pb-5">
-                {chartData.length > 0 ? (
+                {stats?.chartData && stats.chartData.length > 0 ? (
                   <div className="h-[280px] w-full mt-4 select-none">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                      <AreaChart data={stats.chartData} margin={{ top: 10, right: -5, left: -20, bottom: 0 }}>
                         <defs>
                           <linearGradient id="colorOcupacion" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#00f0ff" stopOpacity={0.35} />
                             <stop offset="95%" stopColor="#00f0ff" stopOpacity={0} />
                           </linearGradient>
+                          <linearGradient id="colorRecaudacion" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#ff6b2c" stopOpacity={0.35} />
+                            <stop offset="95%" stopColor="#ff6b2c" stopOpacity={0} />
+                          </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#141820" vertical={false} />
                         <XAxis dataKey="time" stroke="#8892a4" fontSize={11} className="font-mono" tickLine={false} axisLine={false} />
-                        <YAxis stroke="#8892a4" fontSize={11} className="font-mono" tickLine={false} axisLine={false} />
+                        <YAxis yAxisId="left" stroke="#00f0ff" fontSize={11} className="font-mono" tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                        <YAxis yAxisId="right" orientation="right" stroke="#ff6b2c" fontSize={11} className="font-mono" tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
                         <Tooltip
                           contentStyle={{ backgroundColor: '#0a0c12', borderColor: '#141820', borderRadius: '0px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)' }}
-                          itemStyle={{ color: '#00f0ff', fontWeight: 'bold', fontFamily: 'JetBrains Mono' }}
+                          itemStyle={{ fontWeight: 'bold', fontFamily: 'JetBrains Mono' }}
                           labelStyle={{ color: '#8892a4', fontSize: '11px', fontWeight: 'bold', fontFamily: 'JetBrains Mono' }}
+                          formatter={(value: any, name: any) => {
+                            if (name === "ocupacion") return [`${value}%`, "Ocupación"];
+                            if (name === "recaudacion") return [`$${Number(value).toLocaleString()}`, "Recaudación acumulada"];
+                            return [value, name];
+                          }}
                         />
                         <Area
+                          yAxisId="left"
                           type="monotone"
                           dataKey="ocupacion"
+                          name="ocupacion"
                           stroke="#00f0ff"
                           strokeWidth={2.5}
                           fillOpacity={1}
                           fill="url(#colorOcupacion)"
+                        />
+                        <Area
+                          yAxisId="right"
+                          type="monotone"
+                          dataKey="recaudacion"
+                          name="recaudacion"
+                          stroke="#ff6b2c"
+                          strokeWidth={2.5}
+                          fillOpacity={1}
+                          fill="url(#colorRecaudacion)"
                         />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -302,6 +350,213 @@ export const DashboardAdmin: React.FC = () => {
               </CardContent>
             </Card>
           </div>
+
+          {/* Summary of Registrations & Reservations */}
+          <Card className="border-border bg-card/60 backdrop-blur-md shadow-2xl">
+            <CardHeader className="px-6 pt-5 pb-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <CardTitle className="text-base font-extrabold text-[#e8ecf1]">Resumen del Sistema</CardTitle>
+                <CardDescription className="text-xs text-[#8892a4] font-mono">Consolidado de altas y reservas de cocheras</CardDescription>
+              </div>
+              {/* Tab Selector */}
+              <div className="flex border border-border p-1 bg-background/40">
+                <button
+                  onClick={() => setSummaryTab("registros")}
+                  className={`px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                    summaryTab === "registros"
+                      ? "bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/20"
+                      : "text-[#8892a4] hover:text-[#e8ecf1]"
+                  }`}
+                >
+                  Registros Recientes
+                </button>
+                <button
+                  onClick={() => setSummaryTab("reservas")}
+                  className={`px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                    summaryTab === "reservas"
+                      ? "bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/20"
+                      : "text-[#8892a4] hover:text-[#e8ecf1]"
+                  }`}
+                >
+                  Cocheras Asignadas ({stats?.activeReservations?.length ?? 0})
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent className="px-6 pb-6">
+              {summaryTab === "registros" ? (
+                /* Recent Registrations Table */
+                !stats?.recentUsers || stats.recentUsers.length === 0 ? (
+                  <div className="text-center py-12 text-[#8892a4] text-xs font-mono">
+                    No se registran usuarios recientes.
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader className="border-border bg-background/40 text-[#8892a4]">
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="font-bold text-xs uppercase tracking-[0.15em] py-3.5 font-mono">Usuario</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-[0.15em] py-3.5 font-mono">Rol</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-[0.15em] py-3.5 font-mono">Vehículo</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-[0.15em] py-3.5 font-mono">Abono</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-[0.15em] py-3.5 font-mono">Cochera</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-[0.15em] py-3.5 text-right font-mono">Registro</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-border">
+                      {stats.recentUsers.map((rUser) => (
+                        <TableRow key={rUser.id} className="border-border hover:bg-card/60 transition duration-200 text-xs">
+                          {/* User details */}
+                          <TableCell className="py-3">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="w-8 h-8 border border-border">
+                                <AvatarFallback className="bg-indigo-500/10 text-indigo-400 font-bold text-[10px] uppercase font-mono">
+                                  {rUser.name.slice(0, 2)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="leading-tight">
+                                <p className="font-bold text-[#e8ecf1]">{rUser.name}</p>
+                                <p className="text-[10px] text-[#8892a4] font-mono mt-0.5">{rUser.email}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+
+                          {/* Role */}
+                          <TableCell className="py-3 font-mono">
+                            <Badge className={`text-[9px] uppercase tracking-wider font-bold rounded-none px-1.5 py-0.5 border ${
+                              rUser.role === "ADMIN"
+                                ? "bg-rose-500/10 text-rose-400 border-rose-500/25"
+                                : rUser.role === "CLIENTE"
+                                  ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/25"
+                                  : "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
+                            }`}>
+                              {rUser.role}
+                            </Badge>
+                          </TableCell>
+
+                          {/* Vehicle Details */}
+                          <TableCell className="py-3 font-mono">
+                            {rUser.vehicles && rUser.vehicles.length > 0 ? (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="px-1.5 py-0.5 bg-[#00f0ff]/5 border border-[#00f0ff]/15 text-[#00f0ff] font-bold text-[10px] tracking-wider w-fit">
+                                  {rUser.vehicles[0].licensePlate}
+                                </span>
+                                {rUser.vehicles[0].brand && (
+                                  <span className="text-[9px] text-[#8892a4]">
+                                    {rUser.vehicles[0].brand} {rUser.vehicles[0].model}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-[#8892a4] italic">Sin auto</span>
+                            )}
+                          </TableCell>
+
+                          {/* Active Subscription */}
+                          <TableCell className="py-3 font-mono">
+                            {rUser.subscription ? (
+                              <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] tracking-wide font-bold rounded-none">
+                                {rUser.subscription.type}
+                              </Badge>
+                            ) : (
+                              <span className="text-[#8892a4]">Ninguno</span>
+                            )}
+                          </TableCell>
+
+                          {/* Selected parking spot */}
+                          <TableCell className="py-3 font-mono">
+                            {rUser.assignedSpot ? (
+                              <span className="px-1.5 py-0.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 font-bold text-[10px] tracking-wider">
+                                {rUser.assignedSpot}
+                              </span>
+                            ) : (
+                              <span className="text-[#8892a4]">—</span>
+                            )}
+                          </TableCell>
+
+                          {/* Registration Date */}
+                          <TableCell className="py-3 text-right font-mono text-[#8892a4]">
+                            {formatTimeAgo(rUser.createdAt)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )
+              ) : (
+                /* Cocheras Asignadas / Reservas Table */
+                !stats?.activeReservations || stats.activeReservations.length === 0 ? (
+                  <div className="text-center py-12 text-[#8892a4] text-xs font-mono">
+                    No hay cocheras reservadas o asignadas en este momento.
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader className="border-border bg-background/40 text-[#8892a4]">
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="font-bold text-xs uppercase tracking-[0.15em] py-3.5 font-mono">Cochera</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-[0.15em] py-3.5 font-mono">Piso</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-[0.15em] py-3.5 font-mono">Asignado A</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-[0.15em] py-3.5 font-mono">Vehículo</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-[0.15em] py-3.5 text-right font-mono">Abono Titular</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-border">
+                      {stats.activeReservations.map((res) => (
+                        <TableRow key={res.spotId} className="border-border hover:bg-card/60 transition duration-200 text-xs">
+                          {/* Spot Label */}
+                          <TableCell className="py-3 font-mono">
+                            <span className="px-2 py-1 bg-purple-500/10 border border-purple-500/25 text-purple-400 font-black text-xs tracking-wider">
+                              {res.label}
+                            </span>
+                          </TableCell>
+
+                          {/* Floor Name */}
+                          <TableCell className="py-3 text-[#e8ecf1] font-semibold">
+                            {res.floorName}
+                          </TableCell>
+
+                          {/* Assigned User */}
+                          <TableCell className="py-3">
+                            <div className="leading-tight">
+                              <p className="font-bold text-[#e8ecf1]">{res.userName || "—"}</p>
+                              <p className="text-[10px] text-[#8892a4] font-mono mt-0.5">{res.userEmail || "—"}</p>
+                            </div>
+                          </TableCell>
+
+                          {/* Vehicle Plate */}
+                          <TableCell className="py-3 font-mono">
+                            {res.licensePlate ? (
+                              <span className="px-1.5 py-0.5 bg-[#00f0ff]/5 border border-[#00f0ff]/15 text-[#00f0ff] font-bold text-[10px] tracking-wider">
+                                {res.licensePlate}
+                              </span>
+                            ) : (
+                              <span className="text-[#8892a4] italic">Sin auto</span>
+                            )}
+                          </TableCell>
+
+                          {/* Subscription Valid Until */}
+                          <TableCell className="py-3 text-right font-mono">
+                            {res.subscriptionType ? (
+                              <div className="flex flex-col items-end gap-0.5">
+                                <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] tracking-wide font-bold rounded-none">
+                                  {res.subscriptionType}
+                                </Badge>
+                                {res.subscriptionValidUntil && (
+                                  <span className="text-[9px] text-[#8892a4]">
+                                    Vence: {new Date(res.subscriptionValidUntil).toLocaleDateString("es-AR")}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-rose-400 font-semibold uppercase text-[9px] tracking-wide">Sin Abono Activo</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )
+              )}
+            </CardContent>
+          </Card>
 
           {/* Recent Activities Table */}
           <Card className="border-border bg-card/60 backdrop-blur-md shadow-2xl">

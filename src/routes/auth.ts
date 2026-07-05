@@ -14,9 +14,17 @@ const registerSchema = z.object({
   email: z.string().email("Email inválido"),
   password: z.string().min(6, "Contraseña mínima 6 caracteres"),
   name: z.string().min(2, "Nombre mínimo 2 caracteres"),
-  phone: z.string().optional(),
-  patente: z.string().min(6, "Patente mínima 6 caracteres"),
-  brand: z.string().optional(),
+  phone: z.string().trim().optional().refine(val => !val || /^\+?[0-9\s\-()]{6,20}$/.test(val), {
+    message: "Número de teléfono inválido (debe contener entre 6 y 20 dígitos/caracteres válidos)",
+  }),
+  patente: z.string()
+    .transform(val => val.replace(/[\s-]/g, "").toUpperCase())
+    .refine(val => /^(?:[A-Z]{3}\d{3}|[A-Z]{2}\d{3}[A-Z]{2}|[A-Z]\d{3}[A-Z]{3}|\d{3}[A-Z]{3})$/.test(val), {
+      message: "Formato de patente inválido (ej: AAA123, AA123BB, A123BCD, 123AAA)",
+    }),
+  brand: z.string().trim().optional().refine(val => !val || /^[a-zA-ZñÑáéíóúÁÉÍÓÚüÜ\s\-\.]{2,50}$/.test(val), {
+    message: "Marca del vehículo inválida (solo letras, mínimo 2 caracteres)",
+  }),
   model: z.string().optional(),
   color: z.string().optional(),
 });

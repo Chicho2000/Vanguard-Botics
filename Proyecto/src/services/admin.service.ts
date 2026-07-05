@@ -99,5 +99,13 @@ export const adminService = {
       body: JSON.stringify({ spotId }),
     });
   },
+
+  async updateParkingSpot(id: number, data: { label?: string; spotType?: string; maxWidthCm?: number; isOccupied?: boolean }) {
+    const { data: result } = await fetchWithAuth(`${API_URL}/parking-spots/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    return result;
+  },
 };
 

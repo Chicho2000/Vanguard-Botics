@@ -10,6 +10,7 @@ export const floorRepository = {
             label: true,
             isOccupied: true,
             spotType: true,
+            maxWidthCm: true,
             row: true,
             column: true,
             assignedUserId: true,
