@@ -34,4 +34,5 @@ Contabilizadas a partir del **lunes 25/05**:
 
 #### 👤 Matias
 
+- **24/05**: 3.0 horas (3h 00m)
 - **05/07**: 3.0 horas (3h 00m)

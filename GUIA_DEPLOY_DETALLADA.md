@@ -16,6 +16,36 @@ Esta guía describe el flujo paso a paso para desplegar la aplicación (Frontend
 
 ## 📅 Paso a Paso del Despliegue
 
+> Esta versión reemplaza un prototipo anterior. Primero se realiza una copia de seguridad y luego se reemplazan las carpetas compiladas; no se debe copiar código nuevo encima de un `dist` antiguo.
+
+### Paso 0: Verificaciones y copia de seguridad
+
+1. Confirma que el repositorio local está actualizado y sin cambios pendientes:
+   ```bash
+   git status
+   git pull origin main
+   ```
+2. Conéctate al servidor:
+   ```bash
+   ssh -p 22002 tres@200.3.127.46
+   ```
+3. Dentro del servidor, guarda una copia del prototipo actual:
+   ```bash
+   FECHA=$(date +%Y%m%d-%H%M%S)
+   mkdir -p ~/backups/$FECHA
+   cp -a ~/public_html ~/backups/$FECHA/public_html
+   cp -a ~/servicios ~/backups/$FECHA/servicios
+   ```
+4. Comprueba el proceso y conserva los valores actuales de puerto y proxy:
+   ```bash
+   pm2 status
+   pm2 describe servicios
+   ```
+5. Sal del servidor para volver a la terminal local:
+   ```bash
+   exit
+   ```
+
 ### Paso 1: Compilación en Entorno Local (Tu Computadora)
 Antes de subir cualquier archivo, es indispensable compilar la aplicación para generar los recursos estáticos de producción.
 
@@ -33,7 +63,15 @@ Antes de subir cualquier archivo, es indispensable compilar la aplicación para 
 ---
 
 ### Paso 2: Transferencia de Archivos (SCP)
-Transfiere los binarios compilados y las configuraciones actualizadas al servidor Debian.
+Transfiere los binarios compilados y las configuraciones actualizadas al servidor Debian. Antes de copiar, prepara carpetas limpias sin borrar `.htaccess` ni el `.env` del servidor:
+
+```bash
+ssh -p 22002 tres@200.3.127.46
+find ~/public_html -mindepth 1 -maxdepth 1 ! -name '.htaccess' -exec rm -rf -- {} +
+rm -rf ~/servicios/dist
+mkdir -p ~/servicios/dist ~/servicios/prisma
+exit
+```
 
 ```bash
 # 1. Subir Frontend compilado (Vite)
@@ -46,6 +84,7 @@ scp -P 22002 -r dist/* tres@200.3.127.46:/home/tres/servicios/dist/
 scp -P 22002 package.json tres@200.3.127.46:/home/tres/servicios/
 scp -P 22002 package-lock.json tres@200.3.127.46:/home/tres/servicios/
 scp -P 22002 -r prisma/schema tres@200.3.127.46:/home/tres/servicios/prisma/
+scp -P 22002 -r prisma/migrations tres@200.3.127.46:/home/tres/servicios/prisma/
 scp -P 22002 prisma.config.ts tres@200.3.127.46:/home/tres/servicios/
 ```
 
@@ -63,18 +102,42 @@ Conéctate por terminal remota para preparar el entorno de producción.
    cd ~/servicios
    npm install
    ```
+   Los avisos de `npm audit` no significan que la instalación haya fallado. No ejecutes `npm audit fix --force`, porque puede actualizar componentes con cambios incompatibles.
 3. Regenera el motor de base de datos local del servidor:
    ```bash
    npx prisma generate
    ```
+   No ejecutes `prisma migrate reset`. Esta instalación utiliza una base existente. La migración debe revisarse antes de aplicar `npx prisma migrate deploy`, porque la relación de cocheras puede existir ya en Supabase.
 4. Reinicia la aplicación usando PM2 para aplicar los cambios de código:
    ```bash
    pm2 restart servicios
    ```
 5. Verifica los logs del servidor para confirmar que arrancó correctamente:
    ```bash
-   pm2 logs servicios --lines 20
+   pm2 logs servicios --err --lines 50 --nostream
    ```
+
+---
+
+### Paso 4: Verificación final
+
+Realiza estas comprobaciones en orden:
+
+1. Abre `http://200.3.127.46:8002/~tres/?v=N`, cambiando `N` por un número nuevo.
+2. Abre `http://200.3.127.46:8002/~tres/api/parking-spots/available`. Debe responder JSON con `success: true` y una lista `data`.
+3. Inicia sesión como administrador y abre Dashboard, Mapa y Usuarios.
+4. Comprueba que el Dashboard no quede negro y que los invitados activos tengan el tag `INVITADO`.
+5. Con un cliente, elige un lugar y confirma que quede guardado.
+6. Con un invitado, registra un ingreso, sal del panel, vuelve con la misma patente y registra la salida.
+7. Desde el admin, cambia un vehículo a un lugar libre y luego intercámbialo con uno ocupado.
+8. Vuelve a revisar:
+   ```bash
+   ssh -p 22002 tres@200.3.127.46
+   pm2 status
+   pm2 logs servicios --err --lines 50 --nostream
+   ```
+
+El despliegue se considera correcto únicamente si la API responde JSON, las tres vistas por rol funcionan y los logs no muestran errores nuevos.
 
 ---
 

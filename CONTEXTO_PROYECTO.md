@@ -26,7 +26,7 @@ Este archivo sirve como "punto de guardado" para saber exactamente dónde estamo
 - Se reforzó la selección y visualización de lugares para clientes en `src/services/floor.service.ts`, `src/repositories/floor.repository.ts`, `Proyecto/src/services/parking-spot.service.ts` y `Proyecto/src/pages/DashboardCliente.tsx`.
 - Se incorporaron invitados activos a Usuarios y al resumen administrativo mediante `src/services/user.service.ts`, `src/repositories/user.repository.ts`, `src/services/stats.service.ts`, `Proyecto/src/pages/UsuariosAdmin.tsx` y `Proyecto/src/pages/DashboardAdmin.tsx`. También se corrigió el fallo de renderizado que dejaba el panel admin en negro.
 - Se corrigieron suscripciones, pagos y recaudación para que un cambio de plan reemplace el valor activo en lugar de acumularlo, mediante `src/services/subscription.service.ts`, `src/repositories/subscription.repository.ts`, `src/services/payment.service.ts`, `src/repositories/payment.repository.ts` y `Proyecto/src/services/subscription.service.ts`.
-- Se añadieron herramientas de mantenimiento en `scripts/reset-operational-data.ts` y `scripts/remove-orphan-guest-from-b2.ts`; se eliminó el vehículo invitado huérfano que ocupaba B2.
+- Se realizó la limpieza puntual del vehículo invitado huérfano que ocupaba B2. Los scripts temporales usados para mantenimiento fueron retirados después de completar la tarea.
 - Se ajustaron configuración, despliegue y arranque local en `src/index.ts`, `package.json`, `README.md`, `GUIA_DEPLOY_DETALLADA.md`, `Proyecto/eslint.config.js`, `Proyecto/src/pages/ConfiguracionAdmin.tsx` y `Proyecto/src/components/ui/BorderGlow.tsx`. El backend local ahora inicia sin el watcher que perdía acceso a la base tras reiniciarse.
 
 ### Commit anterior `474b1cf` — Matuti2611 — 5 de julio de 2026
@@ -76,8 +76,7 @@ Este archivo sirve como "punto de guardado" para saber exactamente dónde estamo
 
 1. Integrar el SDK real de Mercado Pago y webhooks de confirmación.
 2. Agregar gestión de múltiples vehículos por titular desde admin.
-3. Definir y ejecutar el baseline de migraciones de la base Supabase existente.
-4. Dividir el bundle frontend por rutas para reducir la descarga inicial.
+3. Dividir el bundle frontend por rutas para reducir la descarga inicial.
 
 ## 💡 Comandos rápidos
 
