@@ -1,0 +1,18 @@
+model Vehicle {
+  id           Int      @id @default(autoincrement())
+  licensePlate String   @unique
+  userId       Int?
+  brand        String?
+  model        String?
+  color        String?
+  heightCm     Float?
+  widthCm      Float?
+  weightKg     Float?
+  createdAt    DateTime @default(now())
+
+  user     User?            @relation(fields: [userId], references: [id])
+  sessions ParkingSession[]
+
+  @@index([licensePlate])
+  @@map("vehicles")
+}

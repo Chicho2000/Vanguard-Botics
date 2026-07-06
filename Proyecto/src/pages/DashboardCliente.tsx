@@ -7,6 +7,15 @@ import { Clock, CreditCard, LogOut, ShieldCheck, Zap, Map, Layers, Tag, Loader2,
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { getErrorMessage } from "../lib/validation";
+
+interface ActiveSubscription {
+  id: number;
+  type: "DAILY" | "MONTHLY" | "QUARTERLY" | "YEARLY";
+  validFrom: string;
+  validUntil: string;
+  status: string;
+}
 
 interface FloorSpot {
   id: number;
@@ -42,7 +51,7 @@ export const DashboardCliente: React.FC = () => {
   const [floors, setFloors] = useState<FloorOverview[]>([]);
   const [loadingMap, setLoadingMap] = useState(true);
 
-  const [activeSub, setActiveSub] = useState<any>(null);
+  const [activeSub, setActiveSub] = useState<ActiveSubscription | null>(null);
   const [publicConfigs, setPublicConfigs] = useState<Record<string, string>>({});
   const [loadingSub, setLoadingSub] = useState(true);
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
@@ -98,8 +107,8 @@ export const DashboardCliente: React.FC = () => {
       setActiveSub(updated);
       setMessage({ type: "success", text: `¡Plan cambiado a ${getPlanLabel(planType)} con éxito!` });
       setTimeout(() => setMessage(null), 5000);
-    } catch (error: any) {
-      setMessage({ type: "error", text: error.message || "Error al cambiar el plan." });
+    } catch (error: unknown) {
+      setMessage({ type: "error", text: getErrorMessage(error, "Error al cambiar el plan.") });
     } finally {
       setChangingPlan(null);
     }
@@ -118,13 +127,13 @@ export const DashboardCliente: React.FC = () => {
         setSelectedSpotForDetails(null);
         setMessage({ type: "success", text: "¡Cochera liberada con éxito!" });
       } else {
-        const updatedSpot = floorsData.flatMap((f: any) => f.spots).find((s: any) => s.id === spotId);
+        const updatedSpot = (floorsData as FloorOverview[]).flatMap((floor) => floor.spots).find((spot) => spot.id === spotId);
         setSelectedSpotForDetails(updatedSpot || null);
         setMessage({ type: "success", text: "¡Cochera seleccionada con éxito!" });
       }
       setTimeout(() => setMessage(null), 5000);
-    } catch (error: any) {
-      setMessage({ type: "error", text: error.message || "Error al realizar la operación sobre la cochera." });
+    } catch (error: unknown) {
+      setMessage({ type: "error", text: getErrorMessage(error, "Error al realizar la operación sobre la cochera.") });
     } finally {
       setClaimingSpot(false);
     }
@@ -329,7 +338,7 @@ export const DashboardCliente: React.FC = () => {
                                             <div className="leading-tight mt-1">
                                               <span className="block text-[8px] text-[#8892a4] uppercase font-mono tracking-wider">Vehículo</span>
                                               <span className="block text-xs font-bold text-[#e8ecf1] truncate">
-                                                {spot.vehicle.brand || "Desconocido"} {spot.vehicle.model || ""}
+                                                {spot.vehicle.brand || "Desconocido"}
                                               </span>
                                             </div>
                                             {spot.vehicle.entryAt && (
@@ -415,18 +424,10 @@ export const DashboardCliente: React.FC = () => {
                     Cancelar
                   </Button>
                   {selectedSpotForDetails.isOwnSpot ? (
-                    <Button
-                      size="sm"
-                      onClick={() => handleClaimOrReleaseSpot(null)}
-                      disabled={claimingSpot}
-                      className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border border-rose-500/30 text-xs font-mono rounded-none font-bold"
-                    >
-                      {claimingSpot ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        "Liberar Cochera"
-                      )}
-                    </Button>
+                    <>
+                      <Button size="sm" disabled className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-mono rounded-none font-bold">Lugar guardado</Button>
+                      <Button size="sm" onClick={() => handleClaimOrReleaseSpot(null)} disabled={claimingSpot} variant="ghost" className="text-rose-400 text-xs">Liberar</Button>
+                    </>
                   ) : (
                     <Button
                       size="sm"

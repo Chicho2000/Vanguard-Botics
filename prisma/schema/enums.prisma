@@ -1,0 +1,44 @@
+enum Role {
+  ADMIN
+  CLIENTE
+  INVITADO
+}
+
+enum SpotType {
+  NORMAL
+  DISABLED
+  EV_CHARGING
+  MOTORCYCLE
+}
+
+enum SessionStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum SubscriptionType {
+  HOURS
+  DAILY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  MERCADO_PAGO
+  CASH
+  TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}

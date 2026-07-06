@@ -2,6 +2,11 @@ import { Request, Response, NextFunction } from "express";
 import { parkingSpotService } from "../services/parking-spot.service";
 
 export const parkingSpotController = {
+  async getAvailableSpots(_req: Request, res: Response, next: NextFunction) {
+    try {
+      res.json({ success: true, data: await parkingSpotService.getAvailableSpots() });
+    } catch (error) { next(error); }
+  },
   async getSpots(req: Request, res: Response, next: NextFunction) {
     try {
       const spots = await parkingSpotService.getSpots();
@@ -50,6 +55,34 @@ export const parkingSpotController = {
     }
   },
 
+  async assignSpot(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await parkingSpotService.assignSpotAsAdmin(
+        parseInt(req.params.id as string, 10),
+        req.body.userId,
+      );
+      res.json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  },
+  async moveSession(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await parkingSpotService.moveSessionAsAdmin(
+        parseInt(req.params.id as string, 10), req.body.sessionId,
+      );
+      res.json({ success: true, data: result });
+    } catch (error) { next(error); }
+  },
+  async relocate(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await parkingSpotService.relocateAsAdmin(
+        parseInt(req.params.id as string, 10), req.body.targetSpotId,
+      );
+      res.json({ success: true, data: result });
+    } catch (error) { next(error); }
+  },
+
   async selectSpot(req: any, res: Response, next: NextFunction) {
     try {
       const userId = req.user.userId;
@@ -58,9 +91,7 @@ export const parkingSpotController = {
         return res.status(403).json({ success: false, message: "Solo los clientes pueden elegir un espacio de estacionamiento" });
       }
 
-      const { spotId } = req.body;
-      const parsedSpotId = (spotId !== undefined && spotId !== null) ? Number(spotId) : null;
-      const result = await parkingSpotService.selectSpot(userId, parsedSpotId);
+      const result = await parkingSpotService.selectSpot(userId, req.body.spotId);
       res.json(result);
     } catch (error: any) {
       res.status(400).json({ success: false, message: error.message });

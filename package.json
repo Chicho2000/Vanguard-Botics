@@ -6,7 +6,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "tsx watch src/index.ts",
+    "dev:backend": "tsx src/index.ts",
     "dev:frontend": "cd Proyecto && npm run dev"
   },
   "keywords": [],

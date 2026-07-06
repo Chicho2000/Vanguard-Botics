@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Dock from "@/components/ui/Dock";
 import type { DockItemData } from "@/components/ui/Dock";
+import { getErrorMessage } from "../lib/validation";
 
 export const ConfiguracionAdmin: React.FC = () => {
   const { user, logout } = useAuth();
@@ -38,8 +39,8 @@ export const ConfiguracionAdmin: React.FC = () => {
         setError("");
         const data = await adminService.getConfigs();
         setConfigs(data);
-      } catch (err: any) {
-        setError(err.message || "Error al cargar las configuraciones");
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, "Error al cargar las configuraciones"));
       } finally {
         setLoading(false);
       }
@@ -71,8 +72,8 @@ export const ConfiguracionAdmin: React.FC = () => {
       setConfigs(updated);
       setSuccessMessage("Configuraciones guardadas y propagadas con éxito");
       setTimeout(() => setSuccessMessage(""), 5000);
-    } catch (err: any) {
-      setError(err.message || "Error al guardar las configuraciones");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Error al guardar las configuraciones"));
     } finally {
       setSaving(false);
     }

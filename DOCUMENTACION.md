@@ -10,10 +10,10 @@ Contabilizadas a partir del **lunes 25/05**:
 
 | Integrante        | Horas Registradas |       Estado       |
 | :---------------- | :---------------: | :----------------: |
-| **Ciro**          |     4.5 horas     |       Activo       |
-| **Sofi**          |     5.0 horas     |       Activo       |
-| **Matias**        |    _Pendiente_    | Sin datos cargados |
-| **Total General** |   **9.5 horas**   |         -          |
+| **Ciro**          |     7.0 horas     |       Activo       |
+| **Sofi**          |     7.0 horas     |       Activo       |
+| **Matias**        |     3.0 horas     |       Activo       |
+| **Total General** |  **17.0 horas**   |         -          |
 
 ---
 
@@ -24,12 +24,14 @@ Contabilizadas a partir del **lunes 25/05**:
 - **26/05**: 1.5 horas (1h 30m)
 - **27/05**: 1.5 horas (1h 30m)
 - **31/05**: 1.5 horas (1h 30m)
+- **05/07**: 2.5 horas (2h 30m)
 
 #### 👤 Sofi
 
 - **27/05**: 1.0 hora (1h 00m)
 - **29/05**: 4.0 horas (4h 00m)
+- **05/07**: 2.0 horas (2h 00m)
 
 #### 👤 Matias
 
-- _Todavía no se cuenta con esta información._ Se actualizará en cuanto se registren las horas correspondientes.
+- **05/07**: 3.0 horas (3h 00m)

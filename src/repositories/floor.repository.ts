@@ -18,10 +18,12 @@ export const floorRepository = {
               where: { status: "ACTIVE" },
               take: 1,
               select: {
+                id: true,
                 entryAt: true,
                 vehicle: {
                   select: {
                     userId: true,
+                    user: { select: { role: true } },
                     licensePlate: true,
                     brand: true,
                     model: true,

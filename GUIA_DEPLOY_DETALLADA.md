@@ -44,7 +44,9 @@ scp -P 22002 -r dist/* tres@200.3.127.46:/home/tres/servicios/dist/
 
 # 3. Subir configuraciones críticas del Backend
 scp -P 22002 package.json tres@200.3.127.46:/home/tres/servicios/
-scp -P 22002 prisma/schema.prisma tres@200.3.127.46:/home/tres/servicios/prisma/
+scp -P 22002 package-lock.json tres@200.3.127.46:/home/tres/servicios/
+scp -P 22002 -r prisma/schema tres@200.3.127.46:/home/tres/servicios/prisma/
+scp -P 22002 prisma.config.ts tres@200.3.127.46:/home/tres/servicios/
 ```
 
 ---
@@ -95,7 +97,7 @@ Conéctate por terminal remota para preparar el entorno de producción.
   ```bash
   npx prisma generate
   ```
-  *(Asegúrate también de haber subido el archivo `schema.prisma` correcto al servidor mediante SCP).*
+  *(Asegúrate también de haber subido la carpeta completa `prisma/schema/` y `prisma.config.ts` mediante SCP).*
 
 ---
 
@@ -120,3 +122,18 @@ Conéctate por terminal remota para preparar el entorno de producción.
   - Evita la caché añadiendo un parámetro de control a la URL:
     * Accede con: `http://200.3.127.46:8002/~tres/?v=N` (incrementa `N` después de cada deploy).
   - Haz una recarga forzada en el navegador presionando `Ctrl + F5` (Windows) o `Cmd + Shift + R` (Mac).
+
+---
+
+### 5. El admin devuelve 500 y el selector de lugares está vacío
+
+* **Causa más probable:** se publicó el frontend nuevo, pero el backend continúa con una versión anterior. La ruta pública `/parking-spots/available` y el esquema Prisma modular deben desplegarse al mismo tiempo.
+* **Comprobación:** abre `/~tres/api/parking-spots/available`; debe responder JSON con una lista de lugares, nunca HTML ni 404.
+* **Solución:** vuelve a subir `dist/`, `package.json`, `package-lock.json`, `prisma.config.ts` y la carpeta completa `prisma/schema/`. Luego ejecuta en el servidor:
+  ```bash
+  cd ~/servicios
+  npm install
+  npx prisma generate
+  pm2 restart servicios --update-env
+  pm2 logs servicios --err --lines 50 --nostream
+  ```

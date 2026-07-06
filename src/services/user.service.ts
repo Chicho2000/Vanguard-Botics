@@ -1,251 +1,155 @@
-import { userRepository } from "../repositories/user.repository";
 import bcrypt from "bcrypt";
-import { Prisma } from "@prisma/client";
+import { Prisma, Role } from "@prisma/client";
+import { userRepository } from "../repositories/user.repository";
+import { vehicleRepository } from "../repositories/vehicle.repository";
+import { subscriptionService } from "./subscription.service";
 import { prisma } from "../lib/prisma";
+
+interface UserInput {
+  email?: string;
+  password?: string;
+  name?: string;
+  phone?: string | null;
+  role?: Role;
+  patente?: string;
+  brand?: string | null;
+  model?: string | null;
+  color?: string | null;
+  assignedSpotId?: number | null;
+}
+
+const safeUser = <T extends { password: string }>(user: T) => {
+  const { password: _password, ...safe } = user;
+  return safe;
+};
+
+const ensurePlateAvailable = async (plate: string, userId?: number) => {
+  const vehicle = await vehicleRepository.findByLicensePlate(plate);
+  if (vehicle?.userId && vehicle.userId !== userId) {
+    throw { status: 409, message: "La patente ya pertenece a otro usuario" };
+  }
+  return vehicle;
+};
+
+const attachVehicle = async (userId: number, input: UserInput) => {
+  if (!input.patente) return;
+  const existingPlateVehicle = await ensurePlateAvailable(input.patente, userId);
+  const userVehicles = await vehicleRepository.findByUserId(userId);
+  const current = userVehicles[0];
+  const details = {
+    brand: input.brand ?? current?.brand ?? existingPlateVehicle?.brand ?? "Desconocido",
+    model: null,
+  };
+
+  if (current) {
+    await vehicleRepository.update(current.id, { licensePlate: input.patente, ...details });
+  } else if (existingPlateVehicle) {
+    await vehicleRepository.update(existingPlateVehicle.id, {
+      user: { connect: { id: userId } },
+      ...details,
+    });
+  } else {
+    await vehicleRepository.create({
+      licensePlate: input.patente,
+      user: { connect: { id: userId } },
+      ...details,
+    });
+  }
+
+  if (input.role !== "INVITADO") {
+    await subscriptionService.getActiveSubscription(userId);
+  }
+};
 
 export const userService = {
   async getUsers() {
-    return await userRepository.findMany();
+    const [users, guestSessions] = await Promise.all([
+      userRepository.findMany(),
+      prisma.parkingSession.findMany({
+        where: { status: "ACTIVE", vehicle: { userId: null } },
+        include: { vehicle: true, spot: { include: { floor: true } } },
+        orderBy: { entryAt: "desc" },
+      }),
+    ]);
+    return [
+      ...users,
+      ...guestSessions.map((session) => ({
+        id: -session.id,
+        email: `invitado_${session.vehicle.licensePlate}@local`,
+        name: `Invitado (${session.vehicle.licensePlate})`,
+        phone: null,
+        role: "INVITADO" as const,
+        createdAt: session.entryAt,
+        vehicles: [{
+          licensePlate: session.vehicle.licensePlate,
+          brand: session.vehicle.brand,
+          model: null,
+          color: session.vehicle.color,
+        }],
+        assignedSpot: { id: session.spot.id, label: session.spot.label, floor: { name: session.spot.floor.name } },
+        isTemporaryGuest: true,
+      })),
+    ];
   },
 
   async getUserById(id: number) {
     const user = await userRepository.findById(id);
-    if (!user) return null;
-    
-    // Remove password before returning
-    const { password, ...safeUser } = user;
-    return safeUser;
+    return user ? safeUser(user) : null;
   },
 
-  async createUser(data: any) {
-    const { email, password, name, phone, role, patente, brand, model, color } = data;
-    const hashedPassword = await bcrypt.hash(password, 10);
-    
+  async createUser(input: UserInput) {
+    if (!input.email || !input.password || !input.name) throw { status: 400, message: "Faltan campos requeridos" };
+    if (await userRepository.findByEmail(input.email)) throw { status: 409, message: "El email ya está registrado" };
+    if (input.patente) await ensurePlateAvailable(input.patente);
+
     const user = await userRepository.create({
-      email: email.toLowerCase(),
-      password: hashedPassword,
-      name,
-      phone,
-      role: role || "CLIENTE",
+      email: input.email,
+      password: await bcrypt.hash(input.password, 10),
+      name: input.name,
+      phone: input.phone,
+      role: input.role ?? "CLIENTE",
     });
-
-    if (patente) {
-      const formattedPatente = patente.toUpperCase().trim();
-      const existingVehicle = await prisma.vehicle.findUnique({ where: { licensePlate: formattedPatente } });
-      
-      if (existingVehicle) {
-        await prisma.vehicle.update({
-          where: { id: existingVehicle.id },
-          data: {
-            userId: user.id,
-            brand: brand || existingVehicle.brand,
-            model: model || existingVehicle.model,
-            color: color || existingVehicle.color
-          }
-        });
-      } else {
-        await prisma.vehicle.create({
-          data: {
-            licensePlate: formattedPatente,
-            userId: user.id,
-            brand: brand || "Desconocido",
-            model: model || "Desconocido",
-            color: color || "Desconocido"
-          }
-        });
-      }
-
-      // Automatically assign daily subscription and payment so they have a reserved space
-      const now = new Date();
-      const subscriptionUntil = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-      const sub = await prisma.subscription.create({
-        data: {
-          userId: user.id,
-          type: "DAILY",
-          validFrom: now,
-          validUntil: subscriptionUntil,
-          status: "ACTIVE",
-        },
-      });
-
-      await prisma.payment.create({
-        data: {
-          subscriptionId: sub.id,
-          amount: 3000,
-          method: "MERCADO_PAGO",
-          status: "APPROVED",
-          paidAt: now,
-        },
-      });
-    }
-
-    const { password: _, ...safeUser } = user;
-    return safeUser;
-  },
-
-  async updateUser(id: number, data: any) {
-    const { email, name, phone, role, patente, brand, model, color } = data;
-    const user = await userRepository.update(id, {
-      email,
-      name,
-      phone,
-      role,
-    });
-
-    if (patente) {
-      const formattedPatente = patente.toUpperCase().trim();
-      const userVehicles = await prisma.vehicle.findMany({ where: { userId: id } });
-      
-      if (userVehicles.length > 0) {
-        await prisma.vehicle.update({
-          where: { id: userVehicles[0].id },
-          data: {
-            licensePlate: formattedPatente,
-            brand: brand || userVehicles[0].brand,
-            model: model || userVehicles[0].model,
-            color: color || userVehicles[0].color,
-          }
-        });
-      } else {
-        const existingVehicle = await prisma.vehicle.findUnique({ where: { licensePlate: formattedPatente } });
-        if (existingVehicle) {
-          await prisma.vehicle.update({
-            where: { id: existingVehicle.id },
-            data: {
-              userId: id,
-              brand: brand || existingVehicle.brand,
-              model: model || existingVehicle.model,
-              color: color || existingVehicle.color,
-            }
-          });
-        } else {
-          await prisma.vehicle.create({
-            data: {
-              licensePlate: formattedPatente,
-              userId: id,
-              brand: brand || "Desconocido",
-              model: model || "Desconocido",
-              color: color || "Desconocido"
-            }
-          });
+    await attachVehicle(user.id, input);
+    if (input.assignedSpotId) {
+      const { parkingSpotService } = await import("./parking-spot.service");
+      await parkingSpotService.assignSpotAsAdmin(input.assignedSpotId, user.id);
+      if (input.role === "INVITADO") {
+        const vehicle = (await vehicleRepository.findByUserId(user.id))[0];
+        if (vehicle) {
+          const { parkingSessionService } = await import("./parking-session.service");
+          await parkingSessionService.startRegisteredSession(
+            { userId: user.id, role: "ADMIN" }, vehicle.id, input.assignedSpotId,
+          );
         }
       }
-
-      // Check if user has an active subscription, if not, create one so they have a reserved space
-      const activeSubs = await prisma.subscription.findMany({
-        where: { userId: id, status: "ACTIVE", validUntil: { gte: new Date() } }
-      });
-      if (activeSubs.length === 0) {
-        const now = new Date();
-        const subscriptionUntil = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-        const sub = await prisma.subscription.create({
-          data: {
-            userId: id,
-            type: "DAILY",
-            validFrom: now,
-            validUntil: subscriptionUntil,
-            status: "ACTIVE",
-          },
-        });
-
-        await prisma.payment.create({
-          data: {
-            subscriptionId: sub.id,
-            amount: 3000,
-            method: "MERCADO_PAGO",
-            status: "APPROVED",
-            paidAt: now,
-          },
-        });
-      }
     }
-
-    const { password: _, ...safeUser } = user;
-    return safeUser;
+    return safeUser(user);
   },
 
-  async patchUser(id: number, data: any) {
-    const { patente, brand, model, color, ...restData } = data;
-    const updateData: Prisma.UserUpdateInput = { ...restData };
-    if (updateData.password && typeof updateData.password === "string") {
-      updateData.password = await bcrypt.hash(updateData.password, 10);
+  async updateUser(id: number, input: UserInput) {
+    const data: Prisma.UserUpdateInput = {};
+    if (input.email !== undefined) data.email = input.email;
+    if (input.name !== undefined) data.name = input.name;
+    if (input.phone !== undefined) data.phone = input.phone;
+    if (input.role !== undefined) data.role = input.role;
+    if (input.password) data.password = await bcrypt.hash(input.password, 10);
+    if (input.patente) await ensurePlateAvailable(input.patente, id);
+
+    const user = await userRepository.update(id, data);
+    await attachVehicle(id, input);
+    if (input.assignedSpotId) {
+      const { parkingSpotService } = await import("./parking-spot.service");
+      await parkingSpotService.assignSpotAsAdmin(input.assignedSpotId, id);
+    } else if (input.assignedSpotId === null) {
+      const { parkingSpotService } = await import("./parking-spot.service");
+      await parkingSpotService.selectSpot(id, null);
     }
-
-    const user = await userRepository.update(id, updateData);
-
-    if (patente) {
-      const formattedPatente = patente.toUpperCase().trim();
-      const userVehicles = await prisma.vehicle.findMany({ where: { userId: id } });
-      
-      if (userVehicles.length > 0) {
-        await prisma.vehicle.update({
-          where: { id: userVehicles[0].id },
-          data: {
-            licensePlate: formattedPatente,
-            brand: brand !== undefined ? brand : userVehicles[0].brand,
-            model: model !== undefined ? model : userVehicles[0].model,
-            color: color !== undefined ? color : userVehicles[0].color,
-          }
-        });
-      } else {
-        const existingVehicle = await prisma.vehicle.findUnique({ where: { licensePlate: formattedPatente } });
-        if (existingVehicle) {
-          await prisma.vehicle.update({
-            where: { id: existingVehicle.id },
-            data: {
-              userId: id,
-              brand: brand || existingVehicle.brand,
-              model: model || existingVehicle.model,
-              color: color || existingVehicle.color,
-            }
-          });
-        } else {
-          await prisma.vehicle.create({
-            data: {
-              licensePlate: formattedPatente,
-              userId: id,
-              brand: brand || "Desconocido",
-              model: model || "Desconocido",
-              color: color || "Desconocido"
-            }
-          });
-        }
-      }
-
-      // Check if user has an active subscription, if not, create one so they have a reserved space
-      const activeSubs = await prisma.subscription.findMany({
-        where: { userId: id, status: "ACTIVE", validUntil: { gte: new Date() } }
-      });
-      if (activeSubs.length === 0) {
-        const now = new Date();
-        const subscriptionUntil = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-        const sub = await prisma.subscription.create({
-          data: {
-            userId: id,
-            type: "DAILY",
-            validFrom: now,
-            validUntil: subscriptionUntil,
-            status: "ACTIVE",
-          },
-        });
-
-        await prisma.payment.create({
-          data: {
-            subscriptionId: sub.id,
-            amount: 3000,
-            method: "MERCADO_PAGO",
-            status: "APPROVED",
-            paidAt: now,
-          },
-        });
-      }
-    }
-
-    const { password: _, ...safeUser } = user;
-    return safeUser;
+    return safeUser(user);
   },
 
-  async deleteUser(id: number): Promise<void> {
-    await userRepository.delete(id);
+  patchUser(id: number, input: UserInput) {
+    return this.updateUser(id, input);
   },
+
+  deleteUser: (id: number) => userRepository.delete(id),
 };

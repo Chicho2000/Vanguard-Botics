@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminService } from "../services/admin.service";
 import {
   Users, Layers, Loader2, AlertCircle,
   LayoutDashboard, Map, Settings, LogOut,
-  Pencil, X, Save, Car, Zap, Bike, Accessibility
+  Pencil, X, Save
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Dock from "@/components/ui/Dock";
 import type { DockItemData } from "@/components/ui/Dock";
 import VanguardCarIcon from "@/components/ui/VanguardCarIcon";
+import { getErrorMessage } from "../lib/validation";
 
 interface FloorSpot {
   id: number;
@@ -27,6 +27,9 @@ interface FloorSpot {
   maxWidthCm: number;
   row: number;
   column: number;
+  assignedUserId: number | null;
+  activeSessionId: number | null;
+  isGuest?: boolean;
   vehicle: {
     licensePlate: string;
     brand: string | null;
@@ -49,17 +52,8 @@ interface FloorOverview {
 interface EditModalState {
   spot: FloorSpot;
   floorId: number;
-  label: string;
-  spotType: string;
-  maxWidthCm: string;
+  targetSpotId: string;
 }
-
-const SPOT_TYPE_OPTIONS = [
-  { value: "NORMAL", label: "Normal", icon: Car, color: "#00f0ff" },
-  { value: "DISABLED", label: "Discapacitado", icon: Accessibility, color: "#a855f7" },
-  { value: "EV_CHARGING", label: "Carga Eléctrica", icon: Zap, color: "#22c55e" },
-  { value: "MOTORCYCLE", label: "Moto", icon: Bike, color: "#f59e0b" },
-];
 
 const spotTypeColor: Record<string, string> = {
   NORMAL: "#00f0ff",
@@ -88,22 +82,29 @@ export const MapaAdmin: React.FC = () => {
     };
   }, []);
 
-  async function loadMapData() {
+  const loadMapData = useCallback(async (background = false) => {
     try {
-      setLoading(true);
+      if (!background) setLoading(true);
       setError("");
       const floorsData = await adminService.getFloors();
       setFloors(floorsData);
-    } catch (err: any) {
-      setError(err.message || "Error al cargar la telemetría del mapa");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Error al cargar la telemetría del mapa"));
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    loadMapData();
-  }, []);
+    void loadMapData(false);
+    const interval = window.setInterval(() => void loadMapData(true), 10_000);
+    const refresh = () => void loadMapData(true);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [loadMapData]);
 
   const openEditModal = (spot: FloorSpot, floorId: number) => {
     setSaveError("");
@@ -111,9 +112,7 @@ export const MapaAdmin: React.FC = () => {
     setEditModal({
       spot,
       floorId,
-      label: spot.label,
-      spotType: spot.spotType,
-      maxWidthCm: spot.maxWidthCm?.toString() ?? "",
+      targetSpotId: "",
     });
   };
 
@@ -127,34 +126,23 @@ export const MapaAdmin: React.FC = () => {
     setSaveError("");
     setSaveSuccess("");
     try {
-      const payload: Record<string, any> = {};
-      if (editModal.label.trim() && editModal.label.trim() !== editModal.spot.label) {
-        payload.label = editModal.label.trim();
-      }
-      if (editModal.spotType !== editModal.spot.spotType) {
-        payload.spotType = editModal.spotType;
-      }
-      const parsedWidth = parseFloat(editModal.maxWidthCm);
-      if (!isNaN(parsedWidth) && parsedWidth !== editModal.spot.maxWidthCm) {
-        payload.maxWidthCm = parsedWidth;
-      }
-
-      if (Object.keys(payload).length === 0) {
-        setSaveError("No hay cambios para guardar.");
+      if (!editModal.targetSpotId) {
+        setSaveError("Elegí el nuevo lugar.");
         setSaving(false);
         return;
       }
 
-      await adminService.updateParkingSpot(editModal.spot.id, payload);
-      setSaveSuccess("¡Cambios guardados correctamente!");
+      const target = floors.flatMap((floor) => floor.spots).find((spot) => spot.id === Number(editModal.targetSpotId));
+      await adminService.relocateParkingSpot(editModal.spot.id, Number(editModal.targetSpotId));
+      setSaveSuccess(target?.status === "EMPTY" ? "Vehículo trasladado." : "Lugares intercambiados correctamente.");
       // Reload map data in background
-      await loadMapData();
+      await loadMapData(true);
       setTimeout(() => {
         setEditModal(null);
         setSaveSuccess("");
       }, 1200);
-    } catch (err: any) {
-      setSaveError(err.message || "Error al guardar los cambios.");
+    } catch (err: unknown) {
+      setSaveError(getErrorMessage(err, "Error al guardar los cambios."));
     } finally {
       setSaving(false);
     }
@@ -274,7 +262,7 @@ export const MapaAdmin: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 text-[10px] font-mono text-[#8892a4] uppercase tracking-widest">
             <Pencil className="w-3 h-3 text-[#00f0ff]/60" />
-            <span>Clic en un lugar para editarlo</span>
+            <span>Clic en un lugar para asignar o trasladar un vehículo</span>
           </div>
         </header>
 
@@ -350,8 +338,8 @@ export const MapaAdmin: React.FC = () => {
                                 return (
                                   <div
                                     key={spot.id}
-                                    onClick={() => openEditModal(spot, floor.id)}
-                                    className={`h-16 border flex flex-col items-center justify-between py-2 px-1 relative group transition duration-300 select-none cursor-pointer ${
+                                    onClick={() => { if (spot.status !== "EMPTY") openEditModal(spot, floor.id); }}
+                                    className={`h-16 border flex flex-col items-center justify-between py-2 px-1 relative group transition duration-300 select-none ${spot.status === "EMPTY" ? "cursor-default" : "cursor-pointer"} ${
                                       isSpotOccupied
                                         ? 'bg-gradient-to-b from-[#ff6b2c]/5 to-[#ff6b2c]/15 border-[#ff6b2c]/40 shadow-[0_0_8px_rgba(255,107,44,0.02)] hover:border-[#ff6b2c] hover:shadow-[0_0_15px_rgba(255,107,44,0.2)]'
                                         : isSpotReserved
@@ -360,9 +348,7 @@ export const MapaAdmin: React.FC = () => {
                                     }`}
                                   >
                                     {/* Edit overlay icon on hover */}
-                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200 z-10 bg-black/30">
-                                      <Pencil className="w-4 h-4 text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.5)]" />
-                                    </div>
+                                    {spot.status !== "EMPTY" && <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200 z-10 bg-black/30"><Pencil className="w-4 h-4 text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.5)]" /></div>}
 
                                     {/* Spot Type indicator dot (colored by type) */}
                                     <span
@@ -386,7 +372,7 @@ export const MapaAdmin: React.FC = () => {
 
                                     {/* Tooltip for Occupied Spot */}
                                     {isSpotOccupied && vehicle && (
-                                      <div className={`absolute bottom-18 w-60 p-4 bg-[#0a0c12]/95 border border-[#ff6b2c]/50 text-left opacity-0 pointer-events-none group-hover:opacity-0 transition duration-300 z-50 shadow-[0_10px_35px_rgba(0,0,0,0.9),0_0_20px_rgba(255,107,44,0.25)] flex flex-col gap-2.5 backdrop-blur-md rounded-none ${tooltipAlignClass}`}>
+                                      <div className={`absolute bottom-18 w-60 p-4 bg-[#0a0c12]/95 border border-[#ff6b2c]/50 text-left opacity-0 pointer-events-none group-hover:opacity-100 transition duration-300 z-50 shadow-[0_10px_35px_rgba(0,0,0,0.9),0_0_20px_rgba(255,107,44,0.25)] flex flex-col gap-2.5 backdrop-blur-md rounded-none ${tooltipAlignClass}`}>
                                         <div className="flex justify-between items-center text-[9px] font-mono uppercase tracking-wider text-[#ff6b2c]/70 border-b border-border/40 pb-1">
                                           <span>Cochera {spot.label}</span>
                                           <span>Ocupado</span>
@@ -394,10 +380,11 @@ export const MapaAdmin: React.FC = () => {
                                         <div className="mx-auto w-fit px-3 py-1 border border-[#ff6b2c]/40 bg-[#ff6b2c]/5 text-[#ff6b2c] font-black font-mono text-xs tracking-widest mt-1">
                                           {vehicle.licensePlate}
                                         </div>
+                                        {spot.isGuest && <div className="text-center text-[9px] font-black tracking-widest text-amber-400">INVITADO</div>}
                                         <div className="leading-tight mt-1">
                                           <span className="block text-[9px] text-[#8892a4] uppercase font-mono tracking-wider">Vehículo</span>
                                           <span className="block text-xs font-bold text-[#e8ecf1] truncate">
-                                            {vehicle.brand || "Desconocido"} {vehicle.model || ""}
+                                            {vehicle.brand || "Desconocido"}
                                           </span>
                                         </div>
                                         <div className="flex justify-between items-center border-t border-border/30 pt-2 text-[9px] font-mono text-[#8892a4] mt-1">
@@ -455,7 +442,7 @@ export const MapaAdmin: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-sm font-black uppercase tracking-[0.15em] text-[#e8ecf1]">
-                    Editar Lugar {editModal.spot.label}
+                    Cambiar lugar {editModal.spot.label}
                   </h2>
                   <p className="text-[10px] text-[#8892a4] font-mono mt-0.5">
                     ID #{editModal.spot.id} · {editModal.spot.status === "OCCUPIED" ? "Ocupado" : editModal.spot.status === "RESERVED" ? "Reservado" : "Libre"}
@@ -473,75 +460,25 @@ export const MapaAdmin: React.FC = () => {
 
             {/* Form Body */}
             <div className="px-6 py-5 space-y-5">
-              {/* Label */}
+              {/* Current status info */}
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">
-                  Etiqueta del Lugar
+                  Nuevo lugar
                 </Label>
-                <Input
-                  id="edit-spot-label"
-                  value={editModal.label}
-                  onChange={(e) => setEditModal({ ...editModal, label: e.target.value.toUpperCase() })}
+                <select
+                  value={editModal.targetSpotId}
+                  onChange={(event) => setEditModal({ ...editModal, targetSpotId: event.target.value })}
                   disabled={saving}
-                  maxLength={8}
-                  placeholder="Ej: A1, B3..."
-                  className="h-10 bg-background/40 border-border focus-visible:ring-[#00f0ff]/35 focus-visible:border-[#00f0ff]/50 focus-visible:ring-2 focus-visible:ring-offset-0 transition duration-300 font-mono uppercase tracking-wider"
-                />
-              </div>
-
-              {/* Spot Type */}
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">
-                  Tipo de Lugar
-                </Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {SPOT_TYPE_OPTIONS.map((opt) => {
-                    const IconComp = opt.icon;
-                    const isSelected = editModal.spotType === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        disabled={saving}
-                        onClick={() => setEditModal({ ...editModal, spotType: opt.value })}
-                        className={`flex items-center gap-2.5 h-11 px-3 border text-left text-xs font-semibold transition duration-200 disabled:opacity-50 ${
-                          isSelected
-                            ? "border-opacity-60 bg-opacity-10"
-                            : "border-border text-[#8892a4] hover:text-[#e8ecf1] hover:border-border/80 bg-background/30 hover:bg-secondary/40"
-                        }`}
-                        style={isSelected ? {
-                          borderColor: `${opt.color}60`,
-                          backgroundColor: `${opt.color}10`,
-                          color: opt.color,
-                          boxShadow: `0 0 12px ${opt.color}18`
-                        } : {}}
-                      >
-                        <IconComp className="w-4 h-4 flex-shrink-0" />
-                        <span className="truncate">{opt.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Max Width */}
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">
-                  Ancho Máximo (cm)
-                </Label>
-                <Input
-                  id="edit-spot-width"
-                  type="number"
-                  min={100}
-                  max={600}
-                  step={1}
-                  value={editModal.maxWidthCm}
-                  onChange={(e) => setEditModal({ ...editModal, maxWidthCm: e.target.value })}
-                  disabled={saving}
-                  placeholder="Ej: 250"
-                  className="h-10 bg-background/40 border-border focus-visible:ring-[#00f0ff]/35 focus-visible:border-[#00f0ff]/50 focus-visible:ring-2 focus-visible:ring-offset-0 transition duration-300 font-mono"
-                />
-                <p className="text-[10px] text-[#8892a4]/60 font-mono">Ancho físico del espacio de estacionamiento en centímetros.</p>
+                  className="w-full h-10 px-3 bg-background/40 border border-border text-sm text-[#e8ecf1] focus:border-[#00f0ff]/50 outline-none"
+                >
+                  <option value="">Elegí el lugar destino</option>
+                  {floors.flatMap((floor) => floor.spots.map((spot) => ({ floor, spot })))
+                    .filter(({ spot }) => spot.id !== editModal.spot.id)
+                    .map(({ floor, spot }) => <option key={spot.id} value={spot.id}>{floor.name} · {spot.label} · {spot.status === "EMPTY" ? "Libre" : spot.status === "RESERVED" ? "Reservado (se intercambia)" : `Ocupado${spot.vehicle ? ` por ${spot.vehicle.licensePlate}` : ""} (se intercambia)`}</option>)}
+                </select>
+                <p className="text-[10px] text-[#8892a4]/60 font-mono">
+                  Si el destino está ocupado o reservado, ambos lugares se intercambian automáticamente.
+                </p>
               </div>
 
               {/* Current status info */}

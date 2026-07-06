@@ -1,25 +1,14 @@
 import { subscriptionRepository } from "../repositories/subscription.repository";
 import { systemConfigService } from "./system-config.service";
-import { prisma } from "../lib/prisma";
+import { paymentRepository } from "../repositories/payment.repository";
 
 export const subscriptionService = {
   async getActiveSubscription(userId: number) {
-    let activeSub = await prisma.subscription.findFirst({
-      where: {
-        userId,
-        status: "ACTIVE",
-      },
-      orderBy: {
-        validUntil: "desc",
-      },
-    });
+    let activeSub = await subscriptionRepository.findActiveByUserId(userId);
 
     // Si el abono activo ya expiró, marcarlo como expirado
     if (activeSub && new Date(activeSub.validUntil) < new Date()) {
-      await prisma.subscription.update({
-        where: { id: activeSub.id },
-        data: { status: "EXPIRED" },
-      });
+      await subscriptionRepository.update(activeSub.id, { status: "EXPIRED" });
       activeSub = null;
     }
 
@@ -27,27 +16,23 @@ export const subscriptionService = {
     if (!activeSub) {
       const now = new Date();
       const until = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-      activeSub = await prisma.subscription.create({
-        data: {
-          userId,
+      activeSub = await subscriptionRepository.create({
+          user: { connect: { id: userId } },
           type: "DAILY",
           validFrom: now,
           validUntil: until,
           status: "ACTIVE",
-        },
       });
 
       const systemConfigs = await systemConfigService.getConfigs();
       const amount = parseFloat(systemConfigs.rate_daily || "3000");
 
-      await prisma.payment.create({
-        data: {
-          subscriptionId: activeSub.id,
+      await paymentRepository.create({
+          subscription: { connect: { id: activeSub.id } },
           amount,
           method: "MERCADO_PAGO",
           status: "APPROVED",
           paidAt: now,
-        },
       });
     }
 
@@ -55,17 +40,6 @@ export const subscriptionService = {
   },
 
   async changePlan(userId: number, type: "DAILY" | "MONTHLY" | "QUARTERLY" | "YEARLY") {
-    // Cancelar abonos activos existentes
-    await prisma.subscription.updateMany({
-      where: {
-        userId,
-        status: "ACTIVE",
-      },
-      data: {
-        status: "CANCELLED",
-      },
-    });
-
     const now = new Date();
     let until = new Date();
     if (type === "DAILY") {
@@ -78,16 +52,21 @@ export const subscriptionService = {
       until.setFullYear(now.getFullYear() + 1);
     }
 
-    // Crear nueva suscripción
-    const newSub = await prisma.subscription.create({
-      data: {
-        userId,
-        type,
-        validFrom: now,
-        validUntil: until,
-        status: "ACTIVE",
-      },
-    });
+    const current = await subscriptionRepository.findActiveByUserId(userId);
+    const updatedSub = current
+      ? await subscriptionRepository.update(current.id, {
+          type,
+          validFrom: now,
+          validUntil: until,
+          status: "ACTIVE",
+        })
+      : await subscriptionRepository.create({
+          user: { connect: { id: userId } },
+          type,
+          validFrom: now,
+          validUntil: until,
+          status: "ACTIVE",
+        });
 
     // Obtener tarifa del sistema y crear pago asociado
     const systemConfigs = await systemConfigService.getConfigs();
@@ -99,17 +78,9 @@ export const subscriptionService = {
 
     const amount = parseFloat(systemConfigs[rateKey] || "0");
 
-    await prisma.payment.create({
-      data: {
-        subscriptionId: newSub.id,
-        amount,
-        method: "MERCADO_PAGO",
-        status: "APPROVED",
-        paidAt: now,
-      },
-    });
+    await paymentRepository.updateBySubscriptionId(updatedSub.id, amount, now);
 
-    return newSub;
+    return updatedSub;
   },
 
   async getSubscriptionsByUserId(userId: number) {

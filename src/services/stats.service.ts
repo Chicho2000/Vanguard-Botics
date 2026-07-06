@@ -19,21 +19,9 @@ export const statsService = {
       userRepository.count(),
       vehicleRepository.count(),
       parkingSpotRepository.count(),
-      // Dynamic occupied spots: only count active sessions of subscribed vehicles
+      // Real occupancy includes every active session, including guests.
       prisma.parkingSession.count({
-        where: {
-          status: "ACTIVE",
-          vehicle: {
-            user: {
-              subscriptions: {
-                some: {
-                  status: "ACTIVE",
-                  validUntil: { gte: now },
-                },
-              },
-            },
-          },
-        },
+        where: { status: "ACTIVE" },
       }),
       paymentRepository.getTodayRevenue(),
     ]);
@@ -42,9 +30,24 @@ export const statsService = {
     const availableSpots = totalSpots - occupiedSpots;
     const occupancyRate = totalSpots > 0 ? Math.round((occupiedSpots / totalSpots) * 100) : 0;
 
-    // 1. Fetch recent users (last 5) with vehicles, active subscription, and assigned spot
+    const startOfTodayForUsers = new Date(now);
+    startOfTodayForUsers.setHours(0, 0, 0, 0);
+    const startOfWeek = new Date(startOfTodayForUsers);
+    startOfWeek.setDate(startOfWeek.getDate() - 6);
+
+    const [clients, admins, registeredGuests, activeAnonymousGuests, registeredToday, registeredThisWeek] = await Promise.all([
+      prisma.user.count({ where: { role: "CLIENTE" } }),
+      prisma.user.count({ where: { role: "ADMIN" } }),
+      prisma.user.count({ where: { role: "INVITADO" } }),
+      prisma.parkingSession.count({ where: { status: "ACTIVE", vehicle: { userId: null } } }),
+      prisma.user.count({ where: { createdAt: { gte: startOfTodayForUsers } } }),
+      prisma.user.count({ where: { createdAt: { gte: startOfWeek } } }),
+    ]);
+    const guests = registeredGuests + activeAnonymousGuests;
+
+    // Last registrations plus aggregate totals provide a useful general summary.
     const recentUsers = await prisma.user.findMany({
-      take: 5,
+      take: 10,
       orderBy: { createdAt: "desc" },
       include: {
         vehicles: true,
@@ -57,10 +60,18 @@ export const statsService = {
       },
     });
 
-    const mappedRecentUsers = recentUsers.map((u) => ({
+    const activeGuestRegistrations = await prisma.parkingSession.findMany({
+      where: { status: "ACTIVE", vehicle: { userId: null } },
+      take: 10,
+      orderBy: { entryAt: "desc" },
+      include: { vehicle: true, spot: true },
+    });
+    const mappedRecentUsers = [
+      ...recentUsers.map((u) => ({
       id: u.id,
       name: u.name,
       email: u.email,
+      phone: u.phone,
       role: u.role,
       createdAt: u.createdAt,
       vehicles: u.vehicles.map((v) => ({
@@ -72,7 +83,19 @@ export const statsService = {
         ? { type: u.subscriptions[0].type, validUntil: u.subscriptions[0].validUntil }
         : null,
       assignedSpot: u.assignedSpot ? u.assignedSpot.label : null,
-    }));
+      })),
+      ...activeGuestRegistrations.map((session) => ({
+        id: -session.id,
+        name: `Invitado (${session.vehicle.licensePlate})`,
+        email: "Ingreso temporal",
+        phone: null,
+        role: "INVITADO",
+        createdAt: session.entryAt,
+        vehicles: [session.vehicle],
+        subscription: null,
+        assignedSpot: session.spot.label,
+      })),
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 10);
 
     // 2. Fetch active reservations (spots pre-assigned to users)
     const activeReservations = await prisma.parkingSpot.findMany({
@@ -178,6 +201,14 @@ export const statsService = {
       occupancyRate,
       totalUsers,
       todayRevenue,
+      registrationSummary: {
+        total: totalUsers,
+        clients,
+        admins,
+        guests,
+        registeredToday,
+        registeredThisWeek,
+      },
       recentUsers: mappedRecentUsers,
       activeReservations: mappedActiveReservations,
       chartData,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminService } from "../services/admin.service";
@@ -14,6 +14,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import Dock from "@/components/ui/Dock";
 import type { DockItemData } from "@/components/ui/Dock";
 import VanguardCarIcon from "@/components/ui/VanguardCarIcon";
+import { getErrorMessage } from "../lib/validation";
 
 interface RecentUser {
   id: number;
@@ -46,6 +47,14 @@ interface Stats {
   recentUsers?: RecentUser[];
   activeReservations?: ActiveReservation[];
   chartData?: { time: string; ocupacion: number; recaudacion: number }[];
+  registrationSummary?: {
+    total: number;
+    clients: number;
+    admins: number;
+    guests: number;
+    registeredToday: number;
+    registeredThisWeek: number;
+  };
 }
 
 interface RecentSession {
@@ -59,6 +68,7 @@ interface RecentSession {
   exitAt: string | null;
   status: string;
   amount: number | null;
+  isGuest: boolean;
 }
 
 
@@ -93,10 +103,9 @@ export const DashboardAdmin: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    async function loadDashboard() {
+  const loadDashboard = useCallback(async (initial = false) => {
       try {
-        setLoading(true);
+        if (initial) setLoading(true);
         setError("");
         const [statsData, activityData] = await Promise.all([
           adminService.getStats(),
@@ -104,14 +113,23 @@ export const DashboardAdmin: React.FC = () => {
         ]);
         setStats(statsData);
         setActivity(activityData);
-      } catch (err: any) {
-        setError(err.message || "Error al cargar el dashboard");
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, "Error al cargar el dashboard"));
       } finally {
-        setLoading(false);
+        if (initial) setLoading(false);
       }
-    }
-    loadDashboard();
   }, []);
+
+  useEffect(() => {
+    void loadDashboard(true);
+    const interval = window.setInterval(() => void loadDashboard(false), 10_000);
+    const refresh = () => void loadDashboard(false);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [loadDashboard]);
 
   // Dock items for quick access
   const dockItems: DockItemData[] = [
@@ -312,7 +330,7 @@ export const DashboardAdmin: React.FC = () => {
                           contentStyle={{ backgroundColor: '#0a0c12', borderColor: '#141820', borderRadius: '0px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)' }}
                           itemStyle={{ fontWeight: 'bold', fontFamily: 'JetBrains Mono' }}
                           labelStyle={{ color: '#8892a4', fontSize: '11px', fontWeight: 'bold', fontFamily: 'JetBrains Mono' }}
-                          formatter={(value: any, name: any) => {
+                          formatter={(value, name) => {
                             if (name === "ocupacion") return [`${value}%`, "Ocupación"];
                             if (name === "recaudacion") return [`$${Number(value).toLocaleString()}`, "Recaudación acumulada"];
                             return [value, name];
@@ -383,6 +401,21 @@ export const DashboardAdmin: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent className="px-6 pb-6">
+              {stats?.registrationSummary && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                  {[
+                    ["Clientes", stats.registrationSummary.clients],
+                    ["Hoy", stats.registrationSummary.registeredToday],
+                    ["Últimos 7 días", stats.registrationSummary.registeredThisWeek],
+                    ["Total cuentas", stats.registrationSummary.total],
+                  ].map(([label, value]) => (
+                    <div key={String(label)} className="p-3 bg-background/40 border border-border/60">
+                      <p className="text-[9px] uppercase tracking-wider text-[#8892a4] font-mono">{label}</p>
+                      <p className="text-xl font-black text-[#00f0ff] mt-1">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
               {summaryTab === "registros" ? (
                 /* Recent Registrations Table */
                 !stats?.recentUsers || stats.recentUsers.length === 0 ? (
@@ -441,7 +474,7 @@ export const DashboardAdmin: React.FC = () => {
                                 </span>
                                 {rUser.vehicles[0].brand && (
                                   <span className="text-[9px] text-[#8892a4]">
-                                    {rUser.vehicles[0].brand} {rUser.vehicles[0].model}
+                                    {rUser.vehicles[0].brand}
                                   </span>
                                 )}
                               </div>
@@ -561,8 +594,8 @@ export const DashboardAdmin: React.FC = () => {
           {/* Recent Activities Table */}
           <Card className="border-border bg-card/60 backdrop-blur-md shadow-2xl">
             <CardHeader className="px-6 pt-5 pb-2">
-              <CardTitle className="text-base font-extrabold text-[#e8ecf1]">Sesiones Activas & Recientes</CardTitle>
-              <CardDescription className="text-xs text-[#8892a4] font-mono">Últimos movimientos detectados por las barreras</CardDescription>
+              <CardTitle className="text-base font-extrabold text-[#e8ecf1]">Historial de Estacionamientos</CardTitle>
+              <CardDescription className="text-xs text-[#8892a4] font-mono">Hasta 100 ingresos y salidas, incluidos clientes e invitados</CardDescription>
             </CardHeader>
             <CardContent className="px-6 pb-6">
               {activity.length === 0 ? (
@@ -589,10 +622,10 @@ export const DashboardAdmin: React.FC = () => {
                             <div className="px-2.5 py-1 bg-[#00f0ff]/10 border border-[#00f0ff]/20 text-[#00f0ff] font-bold text-sm tracking-[0.15em] shadow-sm">
                               {entry.plate}
                             </div>
+                            {entry.isGuest && <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[9px] rounded-none">INVITADO</Badge>}
                             {entry.brand && (
                               <div className="leading-tight">
                                 <span className="block text-xs font-bold text-[#e8ecf1]">{entry.brand}</span>
-                                <span className="text-[10px] text-[#8892a4]">{entry.model}</span>
                               </div>
                             )}
                           </div>

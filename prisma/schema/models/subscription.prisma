@@ -1,0 +1,15 @@
+model Subscription {
+  id             Int                @id @default(autoincrement())
+  userId         Int
+  type           SubscriptionType
+  hoursRemaining Int?
+  validFrom      DateTime           @default(now())
+  validUntil     DateTime
+  status         SubscriptionStatus @default(ACTIVE)
+  createdAt      DateTime           @default(now())
+
+  user    User     @relation(fields: [userId], references: [id])
+  payment Payment?
+
+  @@map("subscriptions")
+}

@@ -1,0 +1,16 @@
+model Payment {
+  id                Int           @id @default(autoincrement())
+  sessionId         Int?          @unique
+  subscriptionId    Int?          @unique
+  amount            Float
+  method            PaymentMethod @default(MERCADO_PAGO)
+  externalPaymentId String?
+  status            PaymentStatus @default(PENDING)
+  paidAt            DateTime?
+  createdAt         DateTime      @default(now())
+
+  session      ParkingSession? @relation(fields: [sessionId], references: [id])
+  subscription Subscription?   @relation(fields: [subscriptionId], references: [id])
+
+  @@map("payments")
+}

@@ -1,0 +1,18 @@
+model ParkingSpot {
+  id             Int      @id @default(autoincrement())
+  label          String
+  floorId        Int
+  row            Int
+  column         Int
+  isOccupied     Boolean  @default(false)
+  spotType       SpotType @default(NORMAL)
+  maxWidthCm     Float
+  assignedUserId Int?     @unique
+
+  assignedUser User?            @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  floor        Floor            @relation(fields: [floorId], references: [id])
+  sessions     ParkingSession[]
+
+  @@unique([floorId, row, column])
+  @@map("parking_spots")
+}

@@ -7,11 +7,14 @@ import {
   Search, Plus, Trash2, Edit2, Shield, Calendar, Phone, Mail, Check, X
 } from "lucide-react";
 import VanguardCarIcon from "../components/ui/VanguardCarIcon";
+import { getErrorMessage, validateLicensePlate, validatePhone, validateVehicleBrand } from "../lib/validation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import Dock from "@/components/ui/Dock";
 import type { DockItemData } from "@/components/ui/Dock";
+import { BrandSelect } from "../components/BrandSelect";
+import { parkingSpotService, type AvailableSpot } from "../services/parking-spot.service";
 
 interface UserItem {
   id: number;
@@ -26,6 +29,7 @@ interface UserItem {
     model: string | null;
     color: string | null;
   }[];
+  assignedSpot?: { id: number; label: string; floor: { name: string } } | null;
 }
 
 export const UsuariosAdmin: React.FC = () => {
@@ -54,8 +58,8 @@ export const UsuariosAdmin: React.FC = () => {
   const [formRole, setFormRole] = useState<"ADMIN" | "CLIENTE" | "INVITADO">("CLIENTE");
   const [formPatente, setFormPatente] = useState("");
   const [formBrand, setFormBrand] = useState("");
-  const [formModel, setFormModel] = useState("");
-  const [formColor, setFormColor] = useState("");
+  const [formSpotId, setFormSpotId] = useState("");
+  const [availableSpots, setAvailableSpots] = useState<AvailableSpot[]>([]);
 
   // Delete Dialog states
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -73,10 +77,11 @@ export const UsuariosAdmin: React.FC = () => {
     try {
       setLoading(true);
       setError("");
-      const data = await adminService.getUsers();
+      const [data, spots] = await Promise.all([adminService.getUsers(), parkingSpotService.getAvailable()]);
       setUsers(data);
-    } catch (err: any) {
-      setError(err.message || "Error al cargar la base de datos de usuarios");
+      setAvailableSpots(spots);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Error al cargar la base de datos de usuarios"));
     } finally {
       setLoading(false);
     }
@@ -128,8 +133,7 @@ export const UsuariosAdmin: React.FC = () => {
     setFormRole("CLIENTE");
     setFormPatente("");
     setFormBrand("");
-    setFormModel("");
-    setFormColor("");
+    setFormSpotId("");
     setError("");
     setIsModalOpen(true);
   };
@@ -144,8 +148,7 @@ export const UsuariosAdmin: React.FC = () => {
     setFormRole(targetUser.role);
     setFormPatente(targetUser.vehicles?.[0]?.licensePlate || "");
     setFormBrand(targetUser.vehicles?.[0]?.brand || "");
-    setFormModel(targetUser.vehicles?.[0]?.model || "");
-    setFormColor(targetUser.vehicles?.[0]?.color || "");
+    setFormSpotId(targetUser.assignedSpot?.id.toString() || "");
     setError("");
     setIsModalOpen(true);
   };
@@ -159,18 +162,23 @@ export const UsuariosAdmin: React.FC = () => {
     }
 
     try {
+      validatePhone(formPhone);
+      validateVehicleBrand(formBrand);
+      const normalizedPlate = formPatente ? validateLicensePlate(formPatente) : "";
       setSaving(true);
       setError("");
       
-      const payload: any = {
+      const payload: {
+        email: string; name: string; phone: string | null; role: "ADMIN" | "CLIENTE" | "INVITADO";
+        patente: string | null; brand: string | null; assignedSpotId: number | null; password?: string;
+      } = {
         email: formEmail.toLowerCase(),
         name: formName,
         phone: formPhone || null,
         role: formRole,
-        patente: formPatente || null,
+        patente: normalizedPlate || null,
         brand: formBrand || null,
-        model: formModel || null,
-        color: formColor || null,
+        assignedSpotId: formSpotId ? Number(formSpotId) : null,
       };
 
       if (formPassword) {
@@ -190,8 +198,8 @@ export const UsuariosAdmin: React.FC = () => {
       setIsModalOpen(false);
       loadUsers();
       setTimeout(() => setSuccessMessage(""), 5000);
-    } catch (err: any) {
-      setError(err.message || "Error al guardar el usuario");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Error al guardar el usuario"));
     } finally {
       setSaving(false);
     }
@@ -215,8 +223,8 @@ export const UsuariosAdmin: React.FC = () => {
       setUserToDelete(null);
       loadUsers();
       setTimeout(() => setSuccessMessage(""), 5000);
-    } catch (err: any) {
-      setError(err.message || "Error al eliminar el usuario");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Error al eliminar el usuario"));
     } finally {
       setDeleting(false);
     }
@@ -532,7 +540,8 @@ export const UsuariosAdmin: React.FC = () => {
                             <div className="flex items-center justify-end gap-2">
                               {/* Edit Action */}
                               <button
-                                onClick={() => handleOpenEdit(item)}
+                                onClick={() => { if (item.id > 0) handleOpenEdit(item); }}
+                                disabled={item.id < 0}
                                 className="p-2 border border-border bg-card/40 text-[#8892a4] hover:text-[#00f0ff] hover:border-[#00f0ff]/50 transition duration-300 cursor-pointer"
                                 title="Editar Datos"
                               >
@@ -542,7 +551,7 @@ export const UsuariosAdmin: React.FC = () => {
                               {/* Delete Action (prevent self-deletion) */}
                               <button
                                 onClick={() => handleOpenDelete(item)}
-                                disabled={currentUser?.userId === item.id}
+                                disabled={currentUser?.userId === item.id || item.id < 0}
                                 className={`p-2 border border-border bg-card/40 transition duration-300 cursor-pointer ${
                                   currentUser?.userId === item.id
                                     ? "opacity-25 pointer-events-none"
@@ -672,7 +681,7 @@ export const UsuariosAdmin: React.FC = () => {
                 <label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-wider font-mono">Rol en el Sistema *</label>
                 <select
                   value={formRole}
-                  onChange={(e) => setFormRole(e.target.value as any)}
+                  onChange={(e) => setFormRole(e.target.value as "ADMIN" | "CLIENTE" | "INVITADO")}
                   className="w-full h-10 px-3 bg-[#0a0c12] border border-border text-[#e8ecf1] font-semibold text-xs transition duration-300 focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff]/30 outline-none font-mono cursor-pointer"
                 >
                   <option value="CLIENTE">CLIENTE (Abonado)</option>
@@ -701,38 +710,21 @@ export const UsuariosAdmin: React.FC = () => {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-wider font-mono">Marca</label>
-                  <input
-                    type="text"
+                  <BrandSelect
                     value={formBrand}
-                    onChange={(e) => setFormBrand(e.target.value)}
+                    onChange={setFormBrand}
                     className="w-full h-10 px-3 bg-[#05070a]/60 border border-border text-[#e8ecf1] font-semibold text-xs transition duration-300 focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff]/30 outline-none font-mono"
-                    placeholder="ej. Toyota"
                   />
                 </div>
               </div>
 
-              {/* Model and Color */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-wider font-mono">Modelo</label>
-                  <input
-                    type="text"
-                    value={formModel}
-                    onChange={(e) => setFormModel(e.target.value)}
-                    className="w-full h-10 px-3 bg-[#05070a]/60 border border-border text-[#e8ecf1] font-semibold text-xs transition duration-300 focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff]/30 outline-none font-mono"
-                    placeholder="ej. Corolla"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-wider font-mono">Color</label>
-                  <input
-                    type="text"
-                    value={formColor}
-                    onChange={(e) => setFormColor(e.target.value)}
-                    className="w-full h-10 px-3 bg-[#05070a]/60 border border-border text-[#e8ecf1] font-semibold text-xs transition duration-300 focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff]/30 outline-none font-mono"
-                    placeholder="ej. Blanco"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-wider font-mono">Lugar asignado</label>
+                <select value={formSpotId} onChange={(e) => setFormSpotId(e.target.value)} className="w-full h-10 px-3 bg-[#0a0c12] border border-border text-[#e8ecf1] text-xs">
+                  <option value="">Sin lugar</option>
+                  {editingUser?.assignedSpot && <option value={editingUser.assignedSpot.id}>{editingUser.assignedSpot.floor.name} · {editingUser.assignedSpot.label}</option>}
+                  {availableSpots.map((spot) => <option key={spot.id} value={spot.id}>{spot.floor.name} · {spot.label}</option>)}
+                </select>
               </div>
 
               {/* Actions Footer */}

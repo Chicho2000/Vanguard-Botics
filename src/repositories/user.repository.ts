@@ -35,6 +35,7 @@ export const userRepository = {
             color: true,
           },
         },
+        assignedSpot: { select: { id: true, label: true, floor: { select: { name: true } } } },
       },
     });
   },

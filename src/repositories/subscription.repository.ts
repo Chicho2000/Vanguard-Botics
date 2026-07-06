@@ -17,4 +17,26 @@ export const subscriptionRepository = {
       where: { userId },
     });
   },
+
+  findActiveByUserId(userId: number) {
+    return prisma.subscription.findFirst({
+      where: { userId, status: "ACTIVE" },
+      orderBy: { validUntil: "desc" },
+    });
+  },
+
+  create(data: Prisma.SubscriptionCreateInput) {
+    return prisma.subscription.create({ data });
+  },
+
+  update(id: number, data: Prisma.SubscriptionUpdateInput) {
+    return prisma.subscription.update({ where: { id }, data });
+  },
+
+  cancelActiveByUserId(userId: number) {
+    return prisma.subscription.updateMany({
+      where: { userId, status: "ACTIVE" },
+      data: { status: "CANCELLED" },
+    });
+  },
 };

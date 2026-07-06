@@ -1,0 +1,6 @@
+model SystemConfig {
+  key   String @id
+  value String
+
+  @@map("system_configs")
+}

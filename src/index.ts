@@ -38,7 +38,11 @@ app.use("/payments", paymentsRoutes);
 // Catch all error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error("Internal Server Error:", err);
-  res.status(500).json({ success: false, message: "Error interno del servidor" });
+  const status = Number.isInteger(err?.status) ? err.status : 500;
+  res.status(status).json({
+    success: false,
+    message: status === 500 ? "Error interno del servidor" : err.message,
+  });
 });
 
 const PORT = process.env.PORT || 3000;

@@ -23,9 +23,9 @@ interface AuthContextType {
   /** Función para iniciar sesión mediante correo y contraseña. */
   login: (email: string, pass: string) => Promise<void>;
   /** Función para registrar un nuevo usuario en la plataforma. */
-  register: (email: string, pass: string, name: string, phone?: string, patente?: string, brand?: string, model?: string, color?: string) => Promise<void>;
+  register: (email: string, pass: string, name: string, phone: string | undefined, patente: string, brand: string, assignedSpotId: number) => Promise<void>;
   /** Función para iniciar sesión como invitado usando una patente de vehículo. */
-  loginInvitado: (licensePlate: string) => Promise<void>;
+  loginInvitado: (licensePlate: string, brand?: string, spotId?: number) => Promise<void>;
   /** Función para cerrar la sesión activa y limpiar el almacenamiento local. */
   logout: () => void;
   /** Flag que indica si hay una operación de autenticación en progreso. */
@@ -69,20 +69,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const register = async (email: string, pass: string, name: string, phone?: string, patente?: string, brand?: string, model?: string, color?: string) => {
+  const register = async (email: string, pass: string, name: string, phone: string | undefined, patente: string, brand: string, assignedSpotId: number) => {
     setIsLoading(true);
     try {
-      const { user: userData } = await authService.register({ email, password: pass, name, phone, patente, brand, model, color });
+      const { user: userData } = await authService.register({ email, password: pass, name, phone, patente, brand, assignedSpotId });
       setUser(userData);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loginInvitado = async (licensePlate: string) => {
+  const loginInvitado = async (licensePlate: string, brand?: string, spotId?: number) => {
     setIsLoading(true);
     try {
-      const { user: userData } = await authService.loginInvitado(licensePlate);
+      const { user: userData } = await authService.loginInvitado(licensePlate, brand, spotId);
       setUser(userData);
     } finally {
       setIsLoading(false);

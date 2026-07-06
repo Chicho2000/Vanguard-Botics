@@ -1,0 +1,12 @@
+model Floor {
+  id          Int    @id @default(autoincrement())
+  name        String
+  level       Int
+  maxHeightCm Float
+  maxWeightKg Float
+  maxWidthCm  Float
+
+  spots ParkingSpot[]
+
+  @@map("floors")
+}

@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getErrorMessage, validateLicensePlate, validatePhone, validateVehicleBrand } from '../lib/validation';
 import { Lock, User, Eye, EyeOff } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BorderGlow from "@/components/ui/BorderGlow";
+import { BrandSelect } from './BrandSelect';
+import { parkingSpotService, type AvailableSpot } from '../services/parking-spot.service';
 
 
 import parkingRender from "../../public/parking_render.png";
@@ -30,15 +33,34 @@ export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [patente, setPatente] = useState('');
+  const [guestBrand, setGuestBrand] = useState('');
+  const [guestSpotId, setGuestSpotId] = useState('');
 
   // Register specific states
   const [regNombre, setRegNombre] = useState('');
   const [regTelefono, setRegTelefono] = useState('');
   const [regPatente, setRegPatente] = useState('');
   const [regMarca, setRegMarca] = useState('');
-  const [regModelo, setRegModelo] = useState('');
-  const [regColor, setRegColor] = useState('');
+  const [regSpotId, setRegSpotId] = useState('');
   const [regPasswordConfirm, setRegPasswordConfirm] = useState('');
+  const [availableSpots, setAvailableSpots] = useState<AvailableSpot[]>([]);
+  const [spotsError, setSpotsError] = useState("");
+  const [spotsLoading, setSpotsLoading] = useState(true);
+
+  const loadAvailableSpots = useCallback(async () => {
+    try {
+      setSpotsLoading(true);
+      setSpotsError("");
+      setAvailableSpots(await parkingSpotService.getAvailable());
+    } catch (reason) {
+      setAvailableSpots([]);
+      setSpotsError(getErrorMessage(reason, "No se pudieron cargar los lugares disponibles"));
+    } finally {
+      setSpotsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadAvailableSpots(); }, [loadAvailableSpots]);
 
   // Color configuration depending on the selected active tab
   const getThemeColors = () => {
@@ -95,9 +117,10 @@ export const Login: React.FC = () => {
           navigate('/dashboard');
         }
       } else if (activeTab === 'invitado') {
-        if (patente.length < 6) throw new Error('Patente inválida');
-        await loginInvitado(patente);
-        navigate('/invitado', { state: { patente } });
+        const cleanPatente = validateLicensePlate(patente);
+        if (guestBrand) validateVehicleBrand(guestBrand);
+        await loginInvitado(cleanPatente, guestBrand || undefined, guestSpotId ? Number(guestSpotId) : undefined);
+        navigate('/invitado', { state: { patente: cleanPatente } });
       } else if (activeTab === 'registro') {
         if (password !== regPasswordConfirm) {
           throw new Error('Las contraseñas no coinciden');
@@ -106,35 +129,17 @@ export const Login: React.FC = () => {
           throw new Error('La patente del vehículo es obligatoria');
         }
 
-        // Validación de Patente (formatos argentinos/Mercosur)
-        const cleanPatente = regPatente.replace(/[\s-]/g, '').toUpperCase();
-        const patenteRegex = /^(?:[A-Z]{3}\d{3}|[A-Z]{2}\d{3}[A-Z]{2}|[A-Z]\d{3}[A-Z]{3}|\d{3}[A-Z]{3})$/;
-        if (!patenteRegex.test(cleanPatente)) {
-          throw new Error('Formato de patente inválido (ej: AAA123, AA123BB, A123BCD, 123AAA)');
-        }
+        const cleanPatente = validateLicensePlate(regPatente);
+        validatePhone(regTelefono);
+        validateVehicleBrand(regMarca);
+        if (!regMarca || !regSpotId) throw new Error('Elegí la marca y el lugar de estacionamiento');
 
-        // Validación de Teléfono (si se ingresa)
-        if (regTelefono.trim()) {
-          const phoneRegex = /^\+?[0-9\s\-()]{6,20}$/;
-          if (!phoneRegex.test(regTelefono)) {
-            throw new Error('Número de teléfono inválido (debe contener entre 6 y 20 dígitos/caracteres válidos)');
-          }
-        }
-
-        // Validación de Marca (si se ingresa)
-        if (regMarca.trim()) {
-          const brandRegex = /^[a-zA-ZñÑáéíóúÁÉÍÓÚüÜ\s\-\.]{2,50}$/;
-          if (!brandRegex.test(regMarca.trim())) {
-            throw new Error('La marca del vehículo es inválida (solo letras, mínimo 2 caracteres)');
-          }
-        }
-
-        await contextRegister(email, password, regNombre, regTelefono, cleanPatente, regMarca, regModelo, regColor);
+        await contextRegister(email, password, regNombre, regTelefono, cleanPatente, regMarca, Number(regSpotId));
         setSuccess('¡Registro exitoso! Iniciando sesión...');
         setTimeout(() => navigate('/cliente'), 1500);
       }
-    } catch (err: any) {
-      setError(err.message || 'Error en la autenticación');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Error en la autenticación'));
     } finally {
       setLoading(false);
     }
@@ -383,36 +388,23 @@ export const Login: React.FC = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <Label htmlFor="reg-marca" className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Marca</Label>
-                      <Input
-                        id="reg-marca"
-                        placeholder="ej. Ford"
-                        className={`h-10 bg-background/40 border-border focus-visible:ring-offset-0 focus-visible:ring-2 focus-visible:outline-none transition duration-300 ${colors.inputFocus}`}
+                      <BrandSelect
                         value={regMarca}
-                        onChange={(e) => setRegMarca(e.target.value)}
+                        onChange={setRegMarca}
+                        required
+                        className={`w-full h-10 px-3 bg-background border border-border text-xs ${colors.inputFocus}`}
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="reg-modelo" className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Modelo</Label>
-                      <Input
-                        id="reg-modelo"
-                        placeholder="ej. Fiesta"
-                        className={`h-10 bg-background/40 border-border focus-visible:ring-offset-0 focus-visible:ring-2 focus-visible:outline-none transition duration-300 ${colors.inputFocus}`}
-                        value={regModelo}
-                        onChange={(e) => setRegModelo(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="reg-color" className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Color</Label>
-                      <Input
-                        id="reg-color"
-                        placeholder="ej. Gris"
-                        className={`h-10 bg-background/40 border-border focus-visible:ring-offset-0 focus-visible:ring-2 focus-visible:outline-none transition duration-300 ${colors.inputFocus}`}
-                        value={regColor}
-                        onChange={(e) => setRegColor(e.target.value)}
-                      />
+                      <Label className="text-[10px] font-bold text-[#8892a4] uppercase tracking-[0.15em] font-mono">Lugar</Label>
+                      <select value={regSpotId} onChange={(e) => setRegSpotId(e.target.value)} required className="w-full h-10 px-3 bg-background border border-border text-xs">
+                        <option value="">{spotsLoading ? "Cargando lugares..." : "Elegir lugar"}</option>
+                        {availableSpots.map((spot) => <option key={spot.id} value={spot.id}>{spot.floor.name} · {spot.label}</option>)}
+                      </select>
+                      {spotsError && <button type="button" onClick={() => void loadAvailableSpots()} className="text-[10px] text-rose-400 underline">{spotsError}. Reintentar</button>}
                     </div>
                   </div>
 
@@ -466,7 +458,7 @@ export const Login: React.FC = () => {
                   <div className="text-center space-y-1.5 max-w-[280px] mx-auto">
                     <h3 className="text-sm font-extrabold uppercase tracking-[0.2em] text-[#e8ecf1]">Acceso Rápido</h3>
                     <p className="text-[11px] text-[#8892a4] leading-relaxed">
-                      Ingresá la patente de tu auto para verificar el estado y abonar tu tiempo.
+                      Ingresá tu patente. Si ya tenés un ingreso activo, volverás a tu sesión para registrar la salida.
                     </p>
                   </div>
 
@@ -482,8 +474,15 @@ export const Login: React.FC = () => {
                     />
                   </div>
 
+                  <BrandSelect value={guestBrand} onChange={setGuestBrand} className="w-full h-10 px-3 bg-background border border-border text-xs" />
+                  <select value={guestSpotId} onChange={(e) => setGuestSpotId(e.target.value)} className="w-full h-10 px-3 bg-background border border-border text-xs">
+                    <option value="">{spotsLoading ? "Cargando lugares..." : "Elegí dónde estacionaste"}</option>
+                    {availableSpots.map((spot) => <option key={spot.id} value={spot.id}>{spot.floor.name} · {spot.label}</option>)}
+                  </select>
+                  {spotsError && <button type="button" onClick={() => void loadAvailableSpots()} className="w-full text-[10px] text-rose-400 underline">{spotsError}. Reintentar</button>}
+
                   <Button type="submit" size="lg" className={`w-full h-10 text-sm font-bold tracking-wider transition duration-300 shadow-md ${colors.button}`} disabled={loading}>
-                    BUSCAR VEHÍCULO
+                    INGRESAR / RECUPERAR ESTADÍA
                   </Button>
                 </TabsContent>
               </form>

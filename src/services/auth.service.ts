@@ -2,7 +2,10 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { userRepository } from "../repositories/user.repository";
 import { vehicleRepository } from "../repositories/vehicle.repository";
-import { prisma } from "../lib/prisma";
+import { parkingSessionRepository } from "../repositories/parking-session.repository";
+import { subscriptionService } from "./subscription.service";
+import { parkingSessionService } from "./parking-session.service";
+import { parkingSpotService } from "./parking-spot.service";
 
 const JWT_SECRET = process.env.JWT_SECRET || "default_secret_key_change_me_in_production";
 
@@ -13,7 +16,7 @@ const COOKIE_OPTIONS = {
 };
 
 export const authService = {
-  async register(data: { email: string; password: string; name: string; phone?: string; patente: string; brand?: string; model?: string; color?: string }) {
+  async register(data: { email: string; password: string; name: string; phone?: string; patente: string; brand?: string; assignedSpotId: number }) {
     const normalizedEmail = data.email.toLowerCase();
     const formattedPatente = data.patente.toUpperCase().trim();
 
@@ -45,41 +48,20 @@ export const authService = {
       await vehicleRepository.update(existingVehicle.id, {
         user: { connect: { id: user.id } },
         brand: data.brand || existingVehicle.brand,
-        model: data.model || existingVehicle.model,
-        color: data.color || existingVehicle.color,
+        model: null,
       });
     } else {
       await vehicleRepository.create({
         licensePlate: formattedPatente,
         user: { connect: { id: user.id } },
         brand: data.brand || "Desconocido",
-        model: data.model || "Desconocido",
-        color: data.color || "Desconocido",
+        model: null,
       });
     }
 
-    // 5. Create default active DAILY subscription and payment
-    const now = new Date();
-    const subscriptionUntil = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const sub = await prisma.subscription.create({
-      data: {
-        userId: user.id,
-        type: "DAILY",
-        validFrom: now,
-        validUntil: subscriptionUntil,
-        status: "ACTIVE",
-      },
-    });
-
-    await prisma.payment.create({
-      data: {
-        subscriptionId: sub.id,
-        amount: 3000,
-        method: "MERCADO_PAGO",
-        status: "APPROVED",
-        paidAt: now,
-      },
-    });
+    // 5. Provision the default plan through the subscription domain service.
+    await subscriptionService.getActiveSubscription(user.id);
+    await parkingSpotService.assignSpotAsAdmin(data.assignedSpotId, user.id);
 
     const tokenPayload = {
       userId: user.id,
@@ -127,9 +109,14 @@ export const authService = {
     };
   },
 
-  loginInvitado(licensePlate: string) {
-    if (!licensePlate) {
-      throw { status: 400, message: "Patente requerida" };
+  async loginInvitado(licensePlate: string, brand?: string, spotId?: number) {
+    let activeSession = await parkingSessionRepository.findActiveByLicensePlate(licensePlate);
+    if (!activeSession && brand && spotId) {
+      await parkingSessionService.startGuestSession(licensePlate, brand, spotId);
+      activeSession = await parkingSessionRepository.findActiveByLicensePlate(licensePlate);
+    }
+    if (!activeSession) {
+      throw { status: 400, message: "Elegí la marca y el lugar para registrar el ingreso" };
     }
 
     const tokenPayload = {

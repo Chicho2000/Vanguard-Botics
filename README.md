@@ -31,7 +31,9 @@ Sistema de gestión inteligente para estacionamiento automatizado. Permite admin
 ```
 Chumi/
 ├── prisma/
-│   ├── schema.prisma              # Modelo de datos completo
+│   ├── schema/                    # Esquema Prisma modular
+│   │   ├── schema.prisma          # Generator y datasource
+│   │   └── models/                # Un archivo por tabla
 │   └── migrations/                # Migraciones de la BD
 ├── prisma.config.ts               # Configuración Prisma 7 (datasource URL)
 ├── src/                           # Backend (Express API)

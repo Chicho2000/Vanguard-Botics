@@ -9,6 +9,7 @@ export interface AuthRequest extends Request {
     email: string;
     nombre: string;
     rol: string;
+    patente?: string;
   };
 }
 

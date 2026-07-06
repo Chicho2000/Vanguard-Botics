@@ -19,7 +19,7 @@ async function fetchWithAuth(url: string, options?: RequestInit) {
   let data;
   try {
     data = JSON.parse(responseText);
-  } catch (error) {
+  } catch {
     if (!response.ok) {
       throw new Error(`Error del servidor (status ${response.status}): ${responseText.slice(0, 100)}`);
     }

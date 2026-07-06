@@ -1,0 +1,17 @@
+model ParkingSession {
+  id                   Int           @id @default(autoincrement())
+  vehicleId            Int
+  spotId               Int
+  entryAt              DateTime      @default(now())
+  exitAt               DateTime?
+  totalMinutes         Int?
+  amountCharged        Float?
+  status               SessionStatus @default(ACTIVE)
+  paidWithSubscription Boolean       @default(false)
+
+  vehicle Vehicle     @relation(fields: [vehicleId], references: [id])
+  spot    ParkingSpot @relation(fields: [spotId], references: [id])
+  payment Payment?
+
+  @@map("parking_sessions")
+}

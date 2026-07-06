@@ -22,6 +22,18 @@ async function fetchWithAuth(url: string, options?: RequestInit) {
   return data;
 }
 
+interface AdminUserPayload {
+  email?: string;
+  password?: string;
+  name?: string;
+  phone?: string | null;
+  role?: "ADMIN" | "CLIENTE" | "INVITADO";
+  patente?: string | null;
+  brand?: string | null;
+  model?: string | null;
+  color?: string | null;
+}
+
 export const adminService = {
   async getStats() {
     const { data } = await fetchWithAuth(`${API_URL}/stats`);
@@ -70,7 +82,7 @@ export const adminService = {
     return data;
   },
 
-  async createUser(user: any) {
+  async createUser(user: AdminUserPayload) {
     const { data } = await fetchWithAuth(`${API_URL}/users`, {
       method: "POST",
       body: JSON.stringify(user),
@@ -78,7 +90,7 @@ export const adminService = {
     return data;
   },
 
-  async updateUser(id: number, user: any) {
+  async updateUser(id: number, user: AdminUserPayload) {
     const { data } = await fetchWithAuth(`${API_URL}/users/${id}`, {
       method: "PATCH",
       body: JSON.stringify(user),
@@ -100,12 +112,26 @@ export const adminService = {
     });
   },
 
-  async updateParkingSpot(id: number, data: { label?: string; spotType?: string; maxWidthCm?: number; isOccupied?: boolean }) {
-    const { data: result } = await fetchWithAuth(`${API_URL}/parking-spots/${id}`, {
+  async assignParkingSpot(id: number, userId: number | null) {
+    const { data } = await fetchWithAuth(`${API_URL}/parking-spots/${id}/assignment`, {
       method: "PATCH",
-      body: JSON.stringify(data),
+      body: JSON.stringify({ userId }),
     });
-    return result;
+    return data;
+  },
+  async moveParkingSession(id: number, sessionId: number) {
+    const { data } = await fetchWithAuth(`${API_URL}/parking-spots/${id}/move-session`, {
+      method: "PATCH",
+      body: JSON.stringify({ sessionId }),
+    });
+    return data;
+  },
+  async relocateParkingSpot(id: number, targetSpotId: number) {
+    const { data } = await fetchWithAuth(`${API_URL}/parking-spots/${id}/relocate`, {
+      method: "PATCH",
+      body: JSON.stringify({ targetSpotId }),
+    });
+    return data;
   },
 };
 

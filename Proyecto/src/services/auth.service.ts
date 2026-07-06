@@ -52,12 +52,10 @@ export const authService = {
    * @param {string} [payload.phone] - Número telefónico (opcional).
    * @param {string} [payload.patente] - Patente del vehículo (opcional).
    * @param {string} [payload.brand] - Marca del vehículo (opcional).
-   * @param {string} [payload.model] - Modelo del vehículo (opcional).
-   * @param {string} [payload.color] - Color del vehículo (opcional).
    * @returns {Promise<any>} Promesa con los datos devueltos por el servidor.
    * @throws {Error} Si el registro falla.
    */
-  async register(payload: { email: string; password: string; name: string; phone?: string; patente?: string; brand?: string; model?: string; color?: string }) {
+  async register(payload: { email: string; password: string; name: string; phone?: string; patente?: string; brand?: string; assignedSpotId: number }) {
     const response = await fetch(`${API_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -85,11 +83,11 @@ export const authService = {
    * @returns {Promise<any>} Promesa con los datos devueltos por el servidor.
    * @throws {Error} Si el servidor retorna un error al autenticar la patente.
    */
-  async loginInvitado(licensePlate: string) {
+  async loginInvitado(licensePlate: string, brand?: string, spotId?: number) {
     const response = await fetch(`${API_URL}/auth/login/invitado`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ licensePlate }),
+      body: JSON.stringify({ licensePlate, brand, spotId }),
     });
 
     const data = await response.json();
