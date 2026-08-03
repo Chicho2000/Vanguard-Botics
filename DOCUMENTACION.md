@@ -10,10 +10,10 @@ Contabilizadas a partir del **lunes 25/05**:
 
 | Integrante        | Horas Registradas |       Estado       |
 | :---------------- | :---------------: | :----------------: |
-| **Ciro**          |     7.0 horas     |       Activo       |
+| **Ciro**          |    11.0 horas     |       Activo       |
 | **Sofi**          |     7.0 horas     |       Activo       |
 | **Matias**        |     3.0 horas     |       Activo       |
-| **Total General** |  **17.0 horas**   |         -          |
+| **Total General** |  **21.0 horas**   |         -          |
 
 ---
 
@@ -25,6 +25,7 @@ Contabilizadas a partir del **lunes 25/05**:
 - **27/05**: 1.5 horas (1h 30m)
 - **31/05**: 1.5 horas (1h 30m)
 - **05/07**: 2.5 horas (2h 30m)
+- **02/08**: 4.0 horas (4h 00m) — seguridad de autenticación, Cloudflare Turnstile, sesiones y despliegue.
 
 #### 👤 Sofi
 

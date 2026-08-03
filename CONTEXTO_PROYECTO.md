@@ -2,6 +2,8 @@
 
 > Actualizado el 2 de agosto de 2026: se incorporaron controles de autenticación, Turnstile y expiración de sesiones.
 
+> Despliegue del 2 de agosto de 2026 verificado: frontend bajo `/~tres/` y API de cocheras disponible desde el proceso `servicios` en PM2. La guía de despliegue registra los incidentes y las comprobaciones realizadas.
+
 **Fecha de última actualización:** 2 de agosto de 2026
 
 Este archivo sirve como "punto de guardado" para saber exactamente dónde estamos parados y cómo retomar el desarrollo en la próxima sesión.
@@ -17,6 +19,22 @@ Este archivo sirve como "punto de guardado" para saber exactamente dónde estamo
 - La entrada y salida formal de vehículos está disponible y el admin ve hasta 100 movimientos históricos.
 
 ## Historial de los últimos cambios
+
+### Trabajo realizado — 2 de agosto de 2026
+
+- Se incorporó Cloudflare Turnstile en las tres entradas públicas: inicio de sesión, registro e ingreso como invitado. El token se verifica en el backend antes de procesar la acción; las claves públicas y privadas permanecen fuera del repositorio.
+- Se añadieron límites en memoria contra intentos repetidos: cinco intentos cada quince minutos para inicio de sesión e invitado, y tres registros por IP cada hora.
+- Se agregó vencimiento explícito a las sesiones: 120 minutos para clientes/administradores y 240 minutos para invitados por defecto. El frontend informa el tiempo restante y cierra la sesión al expirar.
+- Se ajustó la validación de inicio de sesión para no mostrar la regla de longitud mínima de contraseña al intentar acceder con una contraseña incorrecta; esa regla se mantiene en el registro.
+- Se retiró completamente la carga de imágenes porque no forma parte del flujo funcional actual. No quedan endpoint ni control de selección de archivos.
+- Se desplegaron frontend, backend compilado, configuración y esquema Prisma. Durante la verificación se regeneró Prisma en el servidor y se confirmó `HTTP 200` en `http://127.0.0.1:3003/parking-spots/available`.
+- Se corrigió la página en blanco posterior al despliegue: Apache devolvía `403` para los assets de Vite porque el directorio `public_html/assets` no tenía permisos de lectura/ejecución para el servidor web. Los permisos se ajustaron y la aplicación quedó operativa.
+
+### Antecedentes relevantes — mayo y junio de 2026
+
+- La eliminación de usuarios se realiza dentro de una transacción: libera cocheras ocupadas, elimina pagos, sesiones, suscripciones y vehículos relacionados antes de borrar al usuario, evitando datos huérfanos.
+- El registro de un vehículo crea o vincula el vehículo al usuario y provisiona el abono correspondiente; los mapas administrativos se alimentan con sesiones, reservas y vehículos reales, no con datos simulados.
+- Se consolidó la identidad visual mediante el componente `VanguardCarIcon` en navegación, paneles y configuraciones.
 
 ### Trabajo realizado hoy — 5 de julio de 2026
 

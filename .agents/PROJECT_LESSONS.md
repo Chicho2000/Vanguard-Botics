@@ -60,6 +60,12 @@
 - No ejecutar automáticamente `prisma db push`, `prisma migrate reset` ni limpiezas en producción: pueden alterar o borrar datos.
 - La base Supabase ya recibió durante el desarrollo la relación `assignedUserId`. Antes de ejecutar migraciones en otro entorno, comprobar su estado para evitar aplicar dos veces el mismo cambio.
 
+### Cliente Prisma desactualizado en el servidor
+
+- **Síntoma:** una ruta compilada nueva devuelve 500 con `Unknown argument assignedUserId` (u otro campo del esquema).
+- **Causa:** el servidor conserva el cliente Prisma generado con el esquema anterior.
+- **Regla:** cuando cambie el backend o el esquema, desplegar también `prisma/schema/`, `prisma/migrations/` y `prisma.config.ts`; ejecutar `npx prisma generate` antes de reiniciar PM2. Consultar primero `npx prisma migrate status`; no aplicar, empujar ni resetear migraciones de una base existente sin revisar su impacto.
+
 ## Despliegue
 
 ### Frontend nuevo con backend viejo
@@ -85,6 +91,17 @@
 - Los assets Vite tienen hash, pero `index.html` puede quedar cacheado.
 - Usar recarga forzada y la URL `http://200.3.127.46:8002/~tres/?v=N` incrementando `N`.
 - Confirmar que `Proyecto/vite.config.ts` conserva `base: '/~tres/'`.
+
+### Pantalla blanca con respuestas 403 para assets Vite
+
+- **Síntoma:** `index.html` abre, pero los archivos `assets/*.js` y `assets/*.css` devuelven `403 (Forbidden)` en la consola del navegador.
+- **Causa:** la carpeta `~/public_html/assets` quedó con permisos que Apache no puede atravesar o leer.
+- **Solución comprobada:** validar que los hashes de `index.html` existan en `assets/`, dejar directorios con `755` y archivos con `644`, y hacer una recarga forzada. No es un problema de React ni de la compilación.
+
+### Turnstile y variables de entorno
+
+- La clave pública `VITE_TURNSTILE_SITE_KEY` pertenece al frontend y se incorpora al compilar; la clave secreta `TURNSTILE_SECRET_KEY` sólo existe en el `.env` del backend.
+- Las dos claves deben pertenecer al mismo widget y el host usado debe estar habilitado en Cloudflare. Tras cambiar la variable pública hay que reconstruir/subir el frontend; tras cambiar la secreta, reiniciar PM2 con `--update-env`.
 
 ### Comprobaciones mínimas posteriores
 
