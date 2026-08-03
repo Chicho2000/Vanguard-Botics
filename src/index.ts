@@ -14,6 +14,7 @@ import subscriptionsRoutes from "./routes/subscriptions";
 import paymentsRoutes from "./routes/payments";
 
 const app = express();
+app.set("trust proxy", 1);
 
 const corsOptions = {
   origin: process.env.FRONTEND_URL || "http://localhost:5173",
@@ -21,7 +22,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json());
+app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 
 app.use("/auth", authRoutes);

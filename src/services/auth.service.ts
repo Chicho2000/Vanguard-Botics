@@ -6,6 +6,7 @@ import { parkingSessionRepository } from "../repositories/parking-session.reposi
 import { subscriptionService } from "./subscription.service";
 import { parkingSessionService } from "./parking-session.service";
 import { parkingSpotService } from "./parking-spot.service";
+import { securityConfig } from "../config/security";
 
 const JWT_SECRET = process.env.JWT_SECRET || "default_secret_key_change_me_in_production";
 
@@ -71,11 +72,13 @@ export const authService = {
       patente: formattedPatente,
     };
 
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: "7d" });
+    const durationMs = securityConfig.sessionDurationMinutes * 60 * 1000;
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: Math.floor(durationMs / 1000) });
 
     return {
       token,
-      cookieOptions: { ...COOKIE_OPTIONS, maxAge: 7 * 24 * 60 * 60 * 1000 },
+      cookieOptions: { ...COOKIE_OPTIONS, maxAge: durationMs },
+      expiresAt: new Date(Date.now() + durationMs).toISOString(),
       user: tokenPayload,
     };
   },
@@ -100,11 +103,13 @@ export const authService = {
       rol: user.role,
     };
 
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: "7d" });
+    const durationMs = securityConfig.sessionDurationMinutes * 60 * 1000;
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: Math.floor(durationMs / 1000) });
 
     return {
       token,
-      cookieOptions: { ...COOKIE_OPTIONS, maxAge: 7 * 24 * 60 * 60 * 1000 },
+      cookieOptions: { ...COOKIE_OPTIONS, maxAge: durationMs },
+      expiresAt: new Date(Date.now() + durationMs).toISOString(),
       user: tokenPayload,
     };
   },
@@ -127,11 +132,13 @@ export const authService = {
       patente: licensePlate,
     };
 
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: "1d" });
+    const durationMs = securityConfig.guestSessionDurationMinutes * 60 * 1000;
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: Math.floor(durationMs / 1000) });
 
     return {
       token,
-      cookieOptions: { ...COOKIE_OPTIONS, maxAge: 24 * 60 * 60 * 1000 },
+      cookieOptions: { ...COOKIE_OPTIONS, maxAge: durationMs },
+      expiresAt: new Date(Date.now() + durationMs).toISOString(),
       user: tokenPayload,
     };
   },

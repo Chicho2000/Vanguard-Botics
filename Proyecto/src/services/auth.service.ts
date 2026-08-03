@@ -12,6 +12,11 @@ const API_URL = window.location.pathname.startsWith('/~')
  * Servicio encargado de gestionar el estado de autenticación y las peticiones al backend.
  */
 export const authService = {
+  storeSession(data: any) {
+    if (data.token) localStorage.setItem("token", data.token);
+    if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
+    if (data.expiresAt) localStorage.setItem("sessionExpiresAt", data.expiresAt);
+  },
   /**
    * Inicia sesión en el sistema mediante correo electrónico y contraseña.
    * Almacena el token JWT y el perfil de usuario en el localStorage en caso de éxito.
@@ -21,11 +26,11 @@ export const authService = {
    * @returns {Promise<any>} Promesa con los datos devueltos por el servidor (token, usuario).
    * @throws {Error} Si la respuesta HTTP no es exitosa o las credenciales son incorrectas.
    */
-  async login(email: string, password: string) {
+  async login(email: string, password: string, captchaToken?: string) {
     const response = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, captchaToken }),
     });
 
     const data = await response.json();
@@ -33,10 +38,7 @@ export const authService = {
       throw new Error(data.message || "Credenciales incorrectas");
     }
 
-    if (data.token) {
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-    }
+    if (data.token) this.storeSession(data);
 
     return data;
   },
@@ -55,7 +57,7 @@ export const authService = {
    * @returns {Promise<any>} Promesa con los datos devueltos por el servidor.
    * @throws {Error} Si el registro falla.
    */
-  async register(payload: { email: string; password: string; name: string; phone?: string; patente?: string; brand?: string; assignedSpotId: number }) {
+  async register(payload: { email: string; password: string; name: string; phone?: string; patente?: string; brand?: string; assignedSpotId: number; captchaToken?: string }) {
     const response = await fetch(`${API_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -67,10 +69,7 @@ export const authService = {
       throw new Error(data.message || "Error al registrar");
     }
 
-    if (data.token) {
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-    }
+    if (data.token) this.storeSession(data);
 
     return data;
   },
@@ -83,11 +82,11 @@ export const authService = {
    * @returns {Promise<any>} Promesa con los datos devueltos por el servidor.
    * @throws {Error} Si el servidor retorna un error al autenticar la patente.
    */
-  async loginInvitado(licensePlate: string, brand?: string, spotId?: number) {
+  async loginInvitado(licensePlate: string, brand?: string, spotId?: number, captchaToken?: string) {
     const response = await fetch(`${API_URL}/auth/login/invitado`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ licensePlate, brand, spotId }),
+      body: JSON.stringify({ licensePlate, brand, spotId, captchaToken }),
     });
 
     const data = await response.json();
@@ -95,10 +94,7 @@ export const authService = {
       throw new Error(data.message || "Error al ingresar como invitado");
     }
 
-    if (data.token) {
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-    }
+    if (data.token) this.storeSession(data);
 
     return data;
   },
@@ -112,6 +108,7 @@ export const authService = {
   logout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("sessionExpiresAt");
     return fetch(`${API_URL}/auth/logout`, { method: "POST" }).catch(() => { });
   },
 
@@ -139,12 +136,34 @@ export const authService = {
     return localStorage.getItem("token");
   },
 
+  getSessionExpiresAt() {
+    const saved = Date.parse(localStorage.getItem("sessionExpiresAt") || "");
+    if (Number.isFinite(saved)) return saved;
+    try {
+      const payload = this.getToken()?.split(".")[1];
+      if (!payload) return null;
+      const parsed = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+      return typeof parsed.exp === "number" ? parsed.exp * 1000 : null;
+    } catch { return null; }
+  },
+
+  isSessionExpired() {
+    const expiresAt = this.getSessionExpiresAt();
+    return expiresAt !== null && expiresAt <= Date.now();
+  },
+
   /**
    * Verifica si existe una sesión activa basándose en la existencia de un token JWT.
    * 
    * @returns {boolean} True si el usuario tiene un token almacenado, False de lo contrario.
    */
   isAuthenticated() {
+    if (this.isSessionExpired()) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("sessionExpiresAt");
+      return false;
+    }
     return !!this.getToken();
   }
 };

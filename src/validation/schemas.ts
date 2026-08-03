@@ -53,9 +53,12 @@ export const optionalPlateSchema = z.preprocess(
 const emailSchema = z.string().trim().email("Email inválido").transform((value) => value.toLowerCase());
 const nameSchema = z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres").max(100);
 const passwordSchema = z.string().min(6, "La contraseña debe tener al menos 6 caracteres").max(100);
+const loginPasswordSchema = z.string().min(1, "Ingresá tu contraseña").max(100);
 const roleSchema = z.enum(["ADMIN", "CLIENTE", "INVITADO"]);
 
-export const loginSchema = z.object({ email: emailSchema, password: passwordSchema }).strict();
+const captchaTokenSchema = z.string().trim().min(20, "Completá la verificación de seguridad").optional();
+
+export const loginSchema = z.object({ email: emailSchema, password: loginPasswordSchema, captchaToken: captchaTokenSchema }).strict();
 export const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
@@ -64,11 +67,13 @@ export const registerSchema = z.object({
   patente: licensePlateSchema,
   brand: optionalBrandSchema,
   assignedSpotId: z.coerce.number().int().positive(),
+  captchaToken: captchaTokenSchema,
 }).strict();
 export const guestLoginSchema = z.object({
   licensePlate: licensePlateSchema,
   brand: optionalBrandSchema,
   spotId: z.coerce.number().int().positive().optional(),
+  captchaToken: captchaTokenSchema,
 }).strict();
 
 export const adminCreateUserSchema = z.object({

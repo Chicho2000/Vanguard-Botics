@@ -1,6 +1,8 @@
 # Contexto Actual del Proyecto: Vanguard Botics
 
-**Fecha de última actualización:** 5 de julio de 2026
+> Actualizado el 2 de agosto de 2026: se incorporaron controles de autenticación, Turnstile y expiración de sesiones.
+
+**Fecha de última actualización:** 2 de agosto de 2026
 
 Este archivo sirve como "punto de guardado" para saber exactamente dónde estamos parados y cómo retomar el desarrollo en la próxima sesión.
 
@@ -50,6 +52,12 @@ Este archivo sirve como "punto de guardado" para saber exactamente dónde estamo
 ## 🟢 Lo que ya está terminado y funcionando
 
 1. **Arquitectura base:**
+   - Seguridad agregada el 2 de agosto de 2026:
+     - Turnstile protege login, registro e ingreso invitado y se valida desde el backend.
+     - Login e invitado: cinco intentos por IP y cuenta/patente cada quince minutos. Registro: tres intentos por IP por hora.
+     - Las sesiones duran por defecto 120 minutos (clientes/administradores) y 240 minutos (invitados), con cierre automático al vencer.
+     - En desarrollo, la `VITE_TURNSTILE_SITE_KEY` vive en `Proyecto/.env.local`; la `TURNSTILE_SECRET_KEY` y `CAPTCHA_REQUIRED=true` viven en el `.env` del backend. Las claves deben pertenecer al mismo widget.
+     - Se descartó la carga de imágenes por no pertenecer al flujo actual.
    - **Frontend:** React 19 + TypeScript + Vite (ubicado en `/Proyecto`).
    - **Backend:** Node.js + Express + TypeScript (ubicado en `/src`).
    - **Base de datos:** PostgreSQL alojada en Supabase.

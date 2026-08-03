@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BorderGlow from "@/components/ui/BorderGlow";
 import { BrandSelect } from './BrandSelect';
 import { parkingSpotService, type AvailableSpot } from '../services/parking-spot.service';
+import { TurnstileCaptcha } from './TurnstileCaptcha';
 
 
 import parkingRender from "../../public/parking_render.png";
@@ -46,6 +47,9 @@ export const Login: React.FC = () => {
   const [availableSpots, setAvailableSpots] = useState<AvailableSpot[]>([]);
   const [spotsError, setSpotsError] = useState("");
   const [spotsLoading, setSpotsLoading] = useState(true);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaRefresh, setCaptchaRefresh] = useState(0);
+  const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
   const loadAvailableSpots = useCallback(async () => {
     try {
@@ -108,7 +112,8 @@ export const Login: React.FC = () => {
 
     try {
       if (activeTab === 'login') {
-        await login(email, password);
+        if (turnstileSiteKey && !captchaToken) throw new Error('Completá la verificación de seguridad');
+        await login(email, password, captchaToken || undefined);
         const userStr = localStorage.getItem('user');
         if (userStr) {
           const u = JSON.parse(userStr);
@@ -119,7 +124,8 @@ export const Login: React.FC = () => {
       } else if (activeTab === 'invitado') {
         const cleanPatente = validateLicensePlate(patente);
         if (guestBrand) validateVehicleBrand(guestBrand);
-        await loginInvitado(cleanPatente, guestBrand || undefined, guestSpotId ? Number(guestSpotId) : undefined);
+        if (turnstileSiteKey && !captchaToken) throw new Error('Completá la verificación de seguridad');
+        await loginInvitado(cleanPatente, guestBrand || undefined, guestSpotId ? Number(guestSpotId) : undefined, captchaToken || undefined);
         navigate('/invitado', { state: { patente: cleanPatente } });
       } else if (activeTab === 'registro') {
         if (password !== regPasswordConfirm) {
@@ -134,12 +140,15 @@ export const Login: React.FC = () => {
         validateVehicleBrand(regMarca);
         if (!regMarca || !regSpotId) throw new Error('Elegí la marca y el lugar de estacionamiento');
 
-        await contextRegister(email, password, regNombre, regTelefono, cleanPatente, regMarca, Number(regSpotId));
+        if (turnstileSiteKey && !captchaToken) throw new Error('Completá la verificación de seguridad');
+        await contextRegister(email, password, regNombre, regTelefono, cleanPatente, regMarca, Number(regSpotId), captchaToken || undefined);
         setSuccess('¡Registro exitoso! Iniciando sesión...');
         setTimeout(() => navigate('/cliente'), 1500);
       }
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Error en la autenticación'));
+      setCaptchaToken('');
+      setCaptchaRefresh((value) => value + 1);
     } finally {
       setLoading(false);
     }
@@ -248,7 +257,7 @@ export const Login: React.FC = () => {
 
             <Tabs
               value={activeTab}
-              onValueChange={(val) => { setActiveTab(val as TabType); setError(''); setSuccess(''); }}
+              onValueChange={(val) => { setActiveTab(val as TabType); setError(''); setSuccess(''); setCaptchaToken(''); setCaptchaRefresh((value) => value + 1); }}
               className="w-full"
             >
               {/* Tabs Header */}
@@ -297,6 +306,9 @@ export const Login: React.FC = () => {
               )}
 
               <form onSubmit={handleSubmit}>
+                {turnstileSiteKey && (
+                  <TurnstileCaptcha siteKey={turnstileSiteKey} resetKey={captchaRefresh} onToken={setCaptchaToken} />
+                )}
 
                 {/* Login Tab */}
                 <TabsContent value="login" className="space-y-3.5">

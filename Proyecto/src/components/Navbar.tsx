@@ -3,6 +3,7 @@
  * @version 1.0.0
  */
 
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { LogOut, User } from "lucide-react";
@@ -16,8 +17,15 @@ import VanguardCarIcon from "./ui/VanguardCarIcon";
  * @returns {JSX.Element} La barra de navegación superior.
  */
 export const Navbar: React.FC = () => {
-  const { logout, user } = useAuth();
+  const { logout, user, sessionExpiresAt } = useAuth();
   const navigate = useNavigate();
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(interval);
+  }, []);
+  const remainingMinutes = sessionExpiresAt ? Math.max(0, Math.ceil((sessionExpiresAt - now) / 60_000)) : null;
 
   const handleLogout = () => {
     logout();
@@ -44,6 +52,7 @@ export const Navbar: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-4">
+          {remainingMinutes !== null && <span className="hidden sm:inline text-[10px] font-mono text-[#8892a4]">Sesión: {remainingMinutes} min</span>}
           <div className="flex items-center gap-2 bg-secondary/60 px-3 py-2 border border-border">
             <User className="w-4 h-4 text-[#00f0ff]" />
             <div className="text-sm">

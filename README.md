@@ -108,7 +108,21 @@ DIRECT_URL="postgresql://usuario:password@host.pooler.supabase.com:5432/postgres
 JWT_SECRET="secreto_super_seguro_vanguard_botics"
 FRONTEND_URL="http://localhost:5173"
 PORT=3000
+
+# Seguridad de autenticación (producción)
+SESSION_DURATION_MINUTES=120
+GUEST_SESSION_DURATION_MINUTES=240
+CAPTCHA_REQUIRED=true
+TURNSTILE_SECRET_KEY="clave-secreta-de-cloudflare-turnstile"
 ```
+
+Antes de compilar el frontend, crear localmente `Proyecto/.env.production.local` (no se sube al repositorio):
+
+```env
+VITE_TURNSTILE_SITE_KEY="clave-publica-de-cloudflare-turnstile"
+```
+
+La clave pública y la secreta se obtienen al crear un widget Turnstile en Cloudflare. Registrá el dominio/IP real del servidor en el widget. `CAPTCHA_REQUIRED=true` hace que el backend rechace cada autenticación si falta o no es válida la verificación; no activar esa variable hasta haber cargado ambas claves.
 
 **4. Sincronizar Base de Datos y Generar Cliente de Prisma**
 Dado que usamos Prisma versión 7, es necesario inicializar el cliente que se guarda en la carpeta `generated/`:
@@ -155,3 +169,9 @@ Este único comando levanta backend y frontend simultáneamente gracias a `concu
 | GET | `/admin/stats` | Admin | Stats del dashboard |
 | GET | `/admin/activity` | Admin | Actividad reciente |
 | GET | `/admin/floors` | Admin | Vista de pisos con ocupación |
+
+### Controles de seguridad incorporados
+
+- Login e ingreso invitado: máximo **5 intentos por IP y cuenta/patente cada 15 minutos**. Registro: máximo **3 intentos por IP por hora**. Las respuestas excedidas devuelven HTTP `429` y `Retry-After`.
+- Los JWT y cookies expiran por defecto a los **120 minutos** (invitados, 240 minutos), son configurables con las variables anteriores y el frontend muestra el tiempo restante/cierra la sesión al vencer. El backend sigue verificando la expiración del JWT.
+- Turnstile se verifica siempre del lado servidor cuando `CAPTCHA_REQUIRED=true`; la clave secreta nunca se envía al navegador.

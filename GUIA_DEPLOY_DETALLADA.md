@@ -51,6 +51,8 @@ Antes de subir cualquier archivo, es indispensable compilar la aplicación para 
 
 1. Abre una terminal local en la carpeta del frontend (`Proyecto`):
    ```bash
+   # Antes de compilar, crear Proyecto/.env.production.local (no se sube):
+   # VITE_TURNSTILE_SITE_KEY="clave_publica_del_widget"
    cd Proyecto
    npm run build
    cd ..
@@ -110,7 +112,12 @@ Conéctate por terminal remota para preparar el entorno de producción.
    No ejecutes `prisma migrate reset`. Esta instalación utiliza una base existente. La migración debe revisarse antes de aplicar `npx prisma migrate deploy`, porque la relación de cocheras puede existir ya en Supabase.
 4. Reinicia la aplicación usando PM2 para aplicar los cambios de código:
    ```bash
-   pm2 restart servicios
+   # Antes de reiniciar, agregar al .env existente (no subirlo):
+   # CAPTCHA_REQUIRED=true
+   # TURNSTILE_SECRET_KEY="clave_secreta_del_widget"
+   # SESSION_DURATION_MINUTES=120
+   # GUEST_SESSION_DURATION_MINUTES=240
+   pm2 restart servicios --update-env
    ```
 5. Verifica los logs del servidor para confirmar que arrancó correctamente:
    ```bash
