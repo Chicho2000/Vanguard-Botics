@@ -84,12 +84,12 @@ Conéctate por terminal remota para preparar el entorno de producción.
    ```bash
    ssh -p 22002 tres@200.3.127.46
    ```
-2. Navega e instala las dependencias de NodeJS:
+2. Si cambiaron `package.json` o `package-lock.json`, instala las dependencias de NodeJS:
    ```bash
    cd ~/servicios
-   npm install
+   npm ci
    ```
-   Los avisos de `npm audit` no significan que la instalación haya fallado. No ejecutes `npm audit fix --force`, porque puede actualizar componentes con cambios incompatibles.
+   Si sólo se actualizó `dist/` o Prisma, este paso no hace falta. Los avisos de `npm audit` no significan que la instalación haya fallado. No ejecutes `npm audit fix` ni `npm audit fix --force`.
 3. Regenera el motor de base de datos local del servidor:
    ```bash
    npx prisma generate
@@ -137,17 +137,19 @@ El despliegue se considera correcto únicamente si la API responde JSON, las tre
 
 ### 1. Error `ENOTEMPTY: directory not empty` al ejecutar `npm install`
 * **Causa:** Ocurre porque `npm` intenta mover o reescribir dependencias dentro de `node_modules` que están bloqueadas por procesos activos, enlaces simbólicos rotos o directorios corruptos.
-* **Solución:** Debes eliminar la carpeta de módulos antiguos y el archivo de bloqueo para limpiar la instalación:
+* **Solución:** no borres `package-lock.json`, porque define las versiones reproducibles del proyecto. Detén primero el proceso y reconstruye `node_modules` desde el lockfile:
   ```bash
-  rm -rf node_modules package-lock.json
-  npm install
+  pm2 stop servicios
+  npm ci
+  pm2 restart servicios --update-env
   ```
+  Si el error continúa, guarda el log y revisa permisos/archivos bloqueados antes de borrar cualquier directorio.
 
 ---
 
 ### 2. Error `PrismaClientConstructorValidationError` o Adaptador Incompatible
 * **Mensaje típico:** *"adapter property can only be provided to PrismaClient constructor when driverAdapters preview feature is enabled"*
-* **Causa:** Subiste cambios al servidor que requieren el adaptador de base de datos PostgreSQL (`@prisma/adapter-pg`), pero el motor de Prisma generado en el servidor Debian es de una versión anterior o no está sincronizado con el archivo `schema.prisma`.
+* **Causa:** Subiste cambios al servidor que requieren el adaptador de base de datos PostgreSQL (`@prisma/adapter-pg`), pero el motor de Prisma generado en el servidor Debian es de una versión anterior o no está sincronizado con el esquema modular de Prisma.
 * **Solución:** Regenera el cliente local de Prisma en el servidor para reconstruir las clases necesarias:
   ```bash
   npx prisma generate

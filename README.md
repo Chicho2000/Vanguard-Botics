@@ -9,7 +9,7 @@ Sistema de gestión inteligente para estacionamiento automatizado. Permite admin
 ### Funcionalidades principales
 
 - **Gestión de usuarios**: Registro y autenticación de usuarios con sus datos personales y sistema de roles (`ADMIN`, `CLIENTE`, `INVITADO`).
-- **Registro de vehículos**: Alta de vehículos con patente, marca, modelo, color y dimensiones (alto, ancho, peso). Un vehículo puede pertenecer a un usuario registrado o ingresar sin cuenta.
+- **Gestión de vehículos**: Alta e identificación por patente y marca. El registro público solicita los datos necesarios para asignar un lugar; los datos técnicos del vehículo se administran por las rutas correspondientes.
 - **Pisos y espacios**: Configuración de la cochera por pisos, cada uno con límites de altura, peso y ancho.
 - **Sesiones de estacionamiento**: Registro de entrada y salida de vehículos, cálculo de minutos y monto cobrado.
 - **Sistema de abonos**: Suscripciones por horas, diarias, mensuales o anuales para usuarios registrados.
@@ -66,7 +66,7 @@ Chumi/
 │   │   ├── context/               # AuthContext (estado global)
 │   │   └── App.tsx                # Router principal
 │   └── vite.config.ts
-├── seed.ts                        # Script para crear usuarios de prueba
+├── seed.ts                        # Seed destructivo, sólo para una BD local descartable
 └── package.json                   # Dependencias raíz y scripts
 ```
 
@@ -97,7 +97,7 @@ cd ..
 ```
 
 **3. Configurar variables de entorno**
-Crear un archivo `.env` en la raíz del proyecto (solicitar las credenciales de Supabase al administrador):
+Crear un archivo `.env` en la raíz del proyecto para el backend (solicitar las credenciales de Supabase al administrador):
 
 > **⚠️ IMPORTANTE:** Asegúrate de que el archivo se llame exactamente `.env` (no `.env.txt`) y esté ubicado en la **raíz del proyecto**, no dentro de la carpeta `prisma/`. Si usas Windows, ten cuidado de que no se guarde con extensiones ocultas.
 ```env
@@ -109,36 +109,35 @@ JWT_SECRET="secreto_super_seguro_vanguard_botics"
 FRONTEND_URL="http://localhost:5173"
 PORT=3000
 
-# Seguridad de autenticación (producción)
+# Seguridad de autenticación
 SESSION_DURATION_MINUTES=120
 GUEST_SESSION_DURATION_MINUTES=240
 CAPTCHA_REQUIRED=true
 TURNSTILE_SECRET_KEY="clave-secreta-de-cloudflare-turnstile"
 ```
 
-Antes de compilar el frontend, crear localmente `Proyecto/.env.production.local` (no se sube al repositorio):
+Para el frontend, crear `Proyecto/.env.local` durante el desarrollo y/o `Proyecto/.env.production.local` antes de compilar para producción. Ambos archivos están excluidos de Git y sólo deben contener la clave pública:
 
 ```env
 VITE_TURNSTILE_SITE_KEY="clave-publica-de-cloudflare-turnstile"
 ```
 
-La clave pública y la secreta se obtienen al crear un widget Turnstile en Cloudflare. Registrá el dominio/IP real del servidor en el widget. `CAPTCHA_REQUIRED=true` hace que el backend rechace cada autenticación si falta o no es válida la verificación; no activar esa variable hasta haber cargado ambas claves.
+La clave pública y la secreta se obtienen al crear un widget Turnstile en Cloudflare. El widget debe permitir `localhost` para desarrollo y el host de producción para el deploy. `CAPTCHA_REQUIRED=true` hace que el backend rechace cada autenticación si falta o no es válida la verificación; no activarlo hasta haber cargado ambas claves del mismo widget.
 
-**4. Sincronizar Base de Datos y Generar Cliente de Prisma**
-Dado que usamos Prisma versión 7, es necesario inicializar el cliente que se guarda en la carpeta `generated/`:
+**4. Generar el cliente Prisma**
+La base de datos del proyecto ya existe. Generá el cliente local para que coincida con el esquema modular:
 ```bash
-# Sincroniza tu base de datos con el esquema
-npx prisma db push
-
-# Genera los tipos de TypeScript del cliente
 npx prisma generate
 ```
 
-**5. (Opcional) Crear usuario admin de prueba**
+No ejecutes `prisma db push`, `prisma migrate reset` ni `prisma migrate deploy` por rutina. Si una migración queda pendiente, primero revisá `npx prisma migrate status` y consultá al equipo antes de modificar una base de datos existente.
+
+**5. Seed local destructivo (sólo si corresponde)**
 ```bash
 npx tsx seed.ts
 ```
-Esto crea el usuario `admin@chumi.com` con contraseña `admin1234`.
+
+> **Advertencia:** este script borra y vuelve a crear los datos de la base conectada, incluidos usuarios, pagos, sesiones, vehículos, cocheras y pisos. Sólo puede ejecutarse con una base local descartable y autorización explícita; nunca contra Supabase ni producción.
 
 **6. Levantar todo el entorno de desarrollo**
 ```bash
@@ -163,6 +162,7 @@ Este único comando levanta backend y frontend simultáneamente gracias a `concu
 | Método | Ruta | Protegido | Descripción |
 | --- | --- | --- | --- |
 | POST | `/auth/login` | No | Login con email y password |
+| POST | `/auth/register` | No | Registro de cliente |
 | POST | `/auth/login/invitado` | No | Login por patente (sin cuenta) |
 | GET | `/auth/verify` | Sí | Verificar token JWT |
 | POST | `/auth/logout` | No | Cerrar sesión |

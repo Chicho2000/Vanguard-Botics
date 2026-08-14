@@ -62,7 +62,7 @@ Este archivo sirve como "punto de guardado" para saber exactamente dónde estamo
 
 **Objetivo:** permitir que los clientes elijan su lugar de estacionamiento.
 
-- `prisma/schema.prisma`: relación entre usuario y cochera asignada.
+- `prisma/schema/`: relación entre usuario y cochera asignada.
 - `src/controllers/parking-spot.controller.ts`, `src/routes/parking-spots.ts` y `src/services/parking-spot.service.ts`: endpoint y lógica de selección.
 - `src/repositories/floor.repository.ts` y `src/services/floor.service.ts`: estado y propietario de cada lugar.
 - `Proyecto/src/pages/DashboardCliente.tsx` y `Proyecto/src/services/admin.service.ts`: selección visual y actualización del mapa desde el cliente.
@@ -70,12 +70,7 @@ Este archivo sirve como "punto de guardado" para saber exactamente dónde estamo
 ## 🟢 Lo que ya está terminado y funcionando
 
 1. **Arquitectura base:**
-   - Seguridad agregada el 2 de agosto de 2026:
-     - Turnstile protege login, registro e ingreso invitado y se valida desde el backend.
-     - Login e invitado: cinco intentos por IP y cuenta/patente cada quince minutos. Registro: tres intentos por IP por hora.
-     - Las sesiones duran por defecto 120 minutos (clientes/administradores) y 240 minutos (invitados), con cierre automático al vencer.
-     - En desarrollo, la `VITE_TURNSTILE_SITE_KEY` vive en `Proyecto/.env.local`; la `TURNSTILE_SECRET_KEY` y `CAPTCHA_REQUIRED=true` viven en el `.env` del backend. Las claves deben pertenecer al mismo widget.
-     - Se descartó la carga de imágenes por no pertenecer al flujo actual.
+   - Los controles de seguridad agregados el 2 de agosto de 2026 están detallados en el historial de cambios de este documento.
    - **Frontend:** React 19 + TypeScript + Vite (ubicado en `/Proyecto`).
    - **Backend:** Node.js + Express + TypeScript (ubicado en `/src`).
    - **Base de datos:** PostgreSQL alojada en Supabase.

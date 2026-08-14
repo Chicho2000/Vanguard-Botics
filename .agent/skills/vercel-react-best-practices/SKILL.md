@@ -144,6 +144,6 @@ Each rule file contains:
 - Correct code example with explanation
 - Additional context and references
 
-## Full Compiled Document
+## Alcance de esta copia local
 
-For the complete guide with all rules expanded: `AGENTS.md`
+Este archivo es una referencia resumida. No presupone que exista una guía ampliada en el `AGENTS.md` raíz del proyecto; ese archivo contiene reglas operativas específicas de Vanguard Botics.

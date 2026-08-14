@@ -75,9 +75,9 @@
 
 ### Prototipo anterior deja archivos obsoletos
 
-- Hacer copia de seguridad antes de reemplazar.
-- Limpiar el contenido visible de `public_html`, preservando `.htaccess` y cualquier configuración del hosting.
-- Reemplazar por completo la carpeta backend `dist`; no copiar encima de una versión antigua porque pueden quedar módulos compilados que ya no existen.
+- El flujo habitual sobrescribe los archivos compilados desde el repositorio local/GitHub; no se sube ni se reemplaza el `.env` remoto.
+- Si hay que reemplazar `dist`, subir el contenido compilado completo y confirmar que existe `dist/index.js` antes de reiniciar PM2.
+- No limpiar directorios de producción de forma general ni borrar `.htaccess`; diagnosticar primero qué archivos concretos requieren reemplazo.
 
 ### HTTP 502 o API caída
 

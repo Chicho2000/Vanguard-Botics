@@ -19,12 +19,14 @@ If the issue is specifically about:
 - **Connection pooling at infrastructure level**: Stop and recommend devops-expert
 
 ### Environment Detection
+> **Regla específica de Vanguard Botics:** el esquema es modular y se configura desde `prisma.config.ts`. Usar `prisma/schema/`, no crear ni buscar un `prisma/schema.prisma` en la raíz. No ejecutar comandos que modifiquen la base sin autorización explícita.
+
 ```bash
 # Check Prisma version
 npx prisma --version 2>/dev/null || echo "Prisma not installed"
 
 # Check database provider
-grep "provider" prisma/schema.prisma 2>/dev/null | head -1
+grep "provider" prisma/schema/schema.prisma 2>/dev/null | head -1
 
 # Check for existing migrations
 ls -la prisma/migrations/ 2>/dev/null | head -5
@@ -53,8 +55,8 @@ ls -la node_modules/.prisma/client/ 2>/dev/null | head -3
 # Validate schema
 npx prisma validate
 
-# Check for schema drift
-npx prisma migrate diff --from-schema-datamodel prisma/schema.prisma --to-schema-datasource prisma/schema.prisma
+# Check migration state before investigating drift
+npx prisma migrate status
 
 # Format schema
 npx prisma format
@@ -116,7 +118,7 @@ ls -la prisma/migrations/
 ```
 
 **Prioritized Fixes:**
-1. **Minimal**: Reset development database with `prisma migrate reset`
+1. **Minimal**: En una base local descartable y con autorización explícita, evaluar `prisma migrate reset`
 2. **Better**: Manually fix migration SQL, use `prisma migrate resolve`
 3. **Complete**: Squash migrations, create baseline for fresh setup
 
@@ -125,7 +127,9 @@ ls -la prisma/migrations/
 # Development
 npx prisma migrate dev --name descriptive_name
 
-# Production (never use migrate dev!)
+# Production (never use migrate dev; first inspect status and obtain authorization)
+npx prisma migrate status
+# Only after the migration was reviewed and approved:
 npx prisma migrate deploy
 
 # If migration fails in production

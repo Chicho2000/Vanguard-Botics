@@ -34,7 +34,7 @@ Para evitar configurar estilos manualmente en el código, recomendamos automatiz
 1. Abre tu archivo de diseño en Figma.
 2. Abre el plugin **Variables2CSS** o selecciona la herramienta nativa de Variables en Figma.
 3. Exporta las variables del modo Light y Dark en formato JSON o CSS.
-4. Si exportas en CSS, copia las variables directamente en `:root` y `.dark` de tu archivo [index.css](file:///d:/Vanguard-Botics-main/Vanguard-Botics-main/Proyecto/src/index.css).
+4. Si exportas en CSS, copia las variables directamente en `:root` y `.dark` de [src/index.css](./src/index.css).
 
 ### Estructura de index.css para Tailwind v4
 Tailwind v4 compila variables CSS automáticamente. Si defines un color `--primary`, Tailwind crea automáticamente la clase `bg-primary` y `text-primary`. 
@@ -71,14 +71,14 @@ graph TD
 
 | Elemento Figma | Componente Shadcn a importar | Comando para agregar (si falta) |
 | :--- | :--- | :--- |
-| **Buttons & Action Links** | `Button` | `npm run ui:add button` |
-| **Info Box / Dashboard Widgets** | `Card`, `CardHeader`, `CardContent` | `npm run ui:add card` |
-| **Status Tag / Role Label** | `Badge` | `npm run ui:add badge` |
-| **Form Inputs & Search Bars** | `Input`, `Label` | `npm run ui:add input label` |
-| **Modal Overlays & Popups** | `Dialog`, `DialogContent` | `npm run ui:add dialog` |
-| **Custom Select dropdowns** | `Select`, `SelectTrigger`, `SelectValue` | `npm run ui:add select` |
-| **Navbar Profile Trigger** | `DropdownMenu`, `Avatar` | `npm run ui:add dropdown-menu avatar` |
-| **Responsive Data Lists** | `Table`, `TableHeader`, `TableRow` | `npm run ui:add table` |
+| **Buttons & Action Links** | `Button` | `npm run ui:add -- button` |
+| **Info Box / Dashboard Widgets** | `Card`, `CardHeader`, `CardContent` | `npm run ui:add -- card` |
+| **Status Tag / Role Label** | `Badge` | `npm run ui:add -- badge` |
+| **Form Inputs & Search Bars** | `Input`, `Label` | `npm run ui:add -- input label` |
+| **Modal Overlays & Popups** | `Dialog`, `DialogContent` | `npm run ui:add -- dialog` |
+| **Custom Select dropdowns** | `Select`, `SelectTrigger`, `SelectValue` | `npm run ui:add -- select` |
+| **Navbar Profile Trigger** | `DropdownMenu`, `Avatar` | `npm run ui:add -- dropdown-menu avatar` |
+| **Responsive Data Lists** | `Table`, `TableHeader`, `TableRow` | `npm run ui:add -- table` |
 
 ---
 
@@ -114,10 +114,10 @@ Para agregar nuevos componentes visuales de Shadcn que no estén pre-instalados,
 
 ```bash
 # Agregar un componente individualmente
-npm run ui:add <nombre-componente>
+npm run ui:add -- <nombre-componente>
 
 # Ejemplo
-npm run ui:add dialog
+npm run ui:add -- dialog
 ```
 
 *¡Todo listo! Tus diseños de Figma ahora tienen un canal directo y ordenado hacia el código.*

@@ -1,10 +1,10 @@
 # Vanguard Botics — Documentación del Proyecto y Registro de Horas
 
-## Este documento contiene el **Registro de Tiempos y Horas de Trabajo** del equipo del proyecto **Vanguard Botics** y la **Guía Estándar de Documentación de Código React + Tailwind + TypeScript** .
+## Este documento contiene el **Registro de Tiempos y Horas de Trabajo** del equipo del proyecto **Vanguard Botics**.
 
 ## 📅 Registro de Tiempos y Horas de Trabajo
 
-Contabilizadas a partir del **lunes 25/05**:
+Contabilizadas a partir del **sábado 24/05**:
 
 ### 📊 Resumen General de Horas
 
@@ -12,8 +12,8 @@ Contabilizadas a partir del **lunes 25/05**:
 | :---------------- | :---------------: | :----------------: |
 | **Ciro**          |    11.0 horas     |       Activo       |
 | **Sofi**          |     7.0 horas     |       Activo       |
-| **Matias**        |     3.0 horas     |       Activo       |
-| **Total General** |  **21.0 horas**   |         -          |
+| **Matias**        |     6.0 horas     |       Activo       |
+| **Total General** |  **24.0 horas**   |         -          |
 
 ---
 
